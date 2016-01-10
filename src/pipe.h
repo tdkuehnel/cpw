@@ -10,7 +10,6 @@
 #define PIPE_BUF_DEPTH 2
 #define MAX_PIPE_BUF_DEPTH 32
 
-#include "process.h"
 #include "uthash.h"
 
 typedef struct cpwpipebuf {
@@ -71,7 +70,5 @@ cpwpipebuf *cpw_pipebuf_new(int bufsize);
 int cpw_pipebuf_init(cpwpipebuf *pipebuf, int bufsize);
 void cpw_pipebuf_free(cpwpipebuf *pipebuf);
 
-/* process related things may go in a seperate file */
-int cpw_process_create( char *execpath, char *args[FFMPEG_MAX_ARGS] );
 
 #endif

@@ -357,32 +357,4 @@ void cpw_pipebuf_free(cpwpipebuf *pipebuf) {
   }
 }
 
-int cpw_process_create(char *execpath, char *args[FFMPEG_MAX_ARGS]) {
-  int r;
-  r = fork();
-  switch ( r )
-    {
-    case -1 : 
-      printf("fork failed in create_process\n");
-      return -1;
-      break;
-    case 0 : {
-      if (freopen("/dev/null", "r", stdin) < 0)
-	printf("error redirecting child stdin\n");
-      if (freopen("/dev/null", "w", stdout) < 0)
-	printf("error redirecting child stdout\n");
-      if (freopen("/dev/null", "w", stderr) < 0)
-	printf("error redirecting child stderr\n");
-      r = execv(execpath, args);
-      printf("execv returned with error: %s\n", strerror(errno));
-      printf("child process ends now\n");
-      /* add proper errno discovery and describe*/
-      exit(1);
-      break;
-    }
-    default:
-      return r;
-      break;
-    }
-}
 

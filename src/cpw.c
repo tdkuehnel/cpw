@@ -13,7 +13,9 @@
 
 #include "utlist.h"
 
+#include "process.h"
 #include "pipe.h"
+
 #include "debug.h"
 
 #define DEBUG 0
@@ -28,16 +30,16 @@ char *buf;
 int gpid;
 
 int teststream_start(cpwpipe *pipe) {
-  char *args[FFMPEG_MAX_ARGS];
-  char arg[FFMPEG_ARG_LEN + 1];
+  char *args[CPW_PROCESS_MAX_ARGS];
+  char arg[CPW_PROCESS_ARG_LEN + 1];
   int i, r;
 
-  args[0] = strndup("ffmpeg", FFMPEG_ARG_LEN - 1 );
+  args[0] = strndup("ffmpeg", CPW_PROCESS_ARG_LEN - 1 );
   args[1] = strdup("-y");
   args[2] = strdup("-f");
   args[3] = strdup("lavfi");
   args[4] = strdup("-i");
-  args[5] = strndup("testsrc=:size=320x240", FFMPEG_ARG_LEN - 1 );
+  args[5] = strndup("testsrc=:size=320x240", CPW_PROCESS_ARG_LEN - 1 );
   args[6] = strdup("-f");
   args[7] = strdup("rawvideo");
   args[8] = strdup("-pix_fmt");
