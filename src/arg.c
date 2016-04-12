@@ -1,8 +1,10 @@
 #include <argp.h>
 #include "arg.h"
 #include "config.h"
+#include "log.h"
 
 #define DEBUG 0
+#define DEBUG_DEEP 0
 #include "debug.h"
 
 const char *argp_program_version = PACKAGE_STRING;
@@ -17,10 +19,12 @@ static char args_doc[] = "[OPTION...]";
 
 /* The options we understand. */
 static struct argp_option options[] = {
-  {"verbose",  'v', 0,      0,  "Produce verbose output" },
-  {"quiet",    'q', 0,      0,  "Don't produce any output" },
-  {"silent",   's', 0,      OPTION_ALIAS },
-  {"configfile",   'f', "FILE", 0, "use configfile instead of ..." },
+  /* long name    sn   arg     flags         description*/
+  {"Verbose",     'v', 0,      0,            "Produce verbose output" },
+  {"quiet",       'q', 0,      0,            "Don't produce any output" },
+  {"silent",      's', 0,      OPTION_ALIAS },
+  {"configfile",  'f', "FILE", 0,            "Use configfile instead of ..." },
+  {"loglevel",    'l', "LEVEL",0,            "Set log level (0 .. 8), default 1" },
   { 0 }
 };
 
@@ -31,7 +35,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
   /* Get the input argument from argp_parse, which we
      know is a pointer to our arguments structure. */
   cpwarguments *arguments = state->input;
-
+  
   switch (key)
     {
     case 'q': case 's':
@@ -43,22 +47,24 @@ parse_opt (int key, char *arg, struct argp_state *state)
     case 'f':
       arguments->config_file = arg;
       break;
-
+    case 'l':
+      arguments->log_level = atoi(arg);
+      break;
     case ARGP_KEY_ARG:
       if (state->arg_num >= 2)
-        /* Too many arguments. */
-        argp_usage (state);
-
+	/* Too many arguments. */
+	argp_usage (state);
+      
       arguments->args[state->arg_num] = arg;
-
+      
       break;
-
+      
     case ARGP_KEY_END:
       if (state->arg_num > 0)
         /* Too many arguments. */
-        argp_usage (state);
+	argp_usage (state);
       break;
-
+      
     default:
       return ARGP_ERR_UNKNOWN;
     }
@@ -68,18 +74,26 @@ parse_opt (int key, char *arg, struct argp_state *state)
 /* Our argp parser. */
 static struct argp argp = { options, parse_opt, args_doc, doc };
 
-
 void cpw_arg_parse(cpwarguments *arguments, int argc, char **argv) {
 
   /* fill in default values */
   arguments->config_file = "/etc/cpw.conf";
+  arguments->log_level = CPW_LOG_LEVEL_DEFAULT;
 
+  CPW_DEBUG ("OUTPUT_FILE = %s\n"
+		"VERBOSE = %s\nSILENT = %s\nLOG_LEVEL = %d\n\n",
+		arguments->config_file,
+		arguments->verbose ? "yes" : "no",
+		arguments->silent ? "yes" : "no",
+		arguments->log_level);
+
+  /* FIXME: argp_parse drops out if help/usage is displayed or wrong params provided. Need proper program cleanup. */
   argp_parse (&argp, argc, argv, 0, 0, arguments);
 
-
-  debug_printf ("OUTPUT_FILE = %s\n"
-          "VERBOSE = %s\nSILENT = %s\n",
-          arguments->config_file,
-          arguments->verbose ? "yes" : "no",
-          arguments->silent ? "yes" : "no");
+  CPW_DEBUG ("OUTPUT_FILE = %s\n"
+		"VERBOSE = %s\nSILENT = %s\nLOG_LEVEL = %d\n\n",
+		arguments->config_file,
+		arguments->verbose ? "yes" : "no",
+		arguments->silent ? "yes" : "no",
+		arguments->log_level);
 }

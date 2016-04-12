@@ -8,6 +8,7 @@
 #include "utlist.h"
 
 #include "pipe.h"
+#include "log.h"
 
 #define DEBUG 0
 #define DEBUG_DEEP 0
@@ -29,7 +30,7 @@ int cpw_pipe_register(cpwpipe *pipe) {
       HASH_ADD_INT(globaloutputlist, fd, pipe);      
     }
   } else {
-    debug_printf("no pipe to register\n");
+    CPW_DEBUG("no pipe to register\n");
     return 0;
   }
 }
@@ -47,44 +48,44 @@ void cpw_pipe_read(cpwpipe *pipe) {
       if ( pipe->buflist->empty ) {
 	if ( pipe->buflist->empty->buf ) {
 	  if ( pipe->buflist->empty->pos  < pipe->buflist->empty->size ) {
-	    debug_deep_printf("\nreading from pipe %s, buffer pos %d\n", pipe->name, pipe->buflist->empty->pos);
+	    CPW_DEBUG_DEEP("\nreading from pipe %s, buffer pos %d\n", pipe->name, pipe->buflist->empty->pos);
 	    readbytes = pipe->buflist->empty->size - pipe->buflist->empty->pos;
-	    debug_deep_printf("readbytes: 0x%08x, (%d)\n", readbytes, readbytes);
+	    CPW_DEBUG_DEEP("readbytes: 0x%08x, (%d)\n", readbytes, readbytes);
 	    pbuf = pipe->buflist->empty->buf + pipe->buflist->empty->pos;
-	    debug_deep_printf("buf: 0x%08x, pbuf: 0x%08x, difference: 0x%08x\n", pipe->buflist->empty->buf, pbuf, pbuf - pipe->buflist->empty->buf);
+	    CPW_DEBUG_DEEP("buf: 0x%08x, pbuf: 0x%08x, difference: 0x%08x\n", pipe->buflist->empty->buf, pbuf, pbuf - pipe->buflist->empty->buf);
 
 	    r = read( pipe->fd, pbuf, readbytes );
-	    debug_deep_printf("read 0x%08x (%d) bytes, framesize 0x%08x (%d)\n", r, r, pipe->buflist->empty->size, pipe->buflist->empty->size);
+	    CPW_DEBUG_DEEP("read 0x%08x (%d) bytes, framesize 0x%08x (%d)\n", r, r, pipe->buflist->empty->size, pipe->buflist->empty->size);
 	    if ( r >= 0 ) {
 	      if ( r > 0 ) {
 		if ( r == readbytes ) {
 		  /* read complete buffer */
 		  pipe->buflist->empty->pos += r;		  
-		  debug_deep_printf("buffer pos now: 0x%08x, next read from other buffer\n", pipe->buflist->empty->pos);
+		  CPW_DEBUG_DEEP("buffer pos now: 0x%08x, next read from other buffer\n", pipe->buflist->empty->pos);
 		  cpw_buflist_buffer_full(pipe->buflist, pipe->buflist->empty);
 		} else {
 		  /* read part of buffer */
 		  pipe->buflist->empty->pos += r;
-		  debug_deep_printf("buffer pos now: 0x%08x, next read at 0x%08x\n", \
+		  CPW_DEBUG_DEEP("buffer pos now: 0x%08x, next read at 0x%08x\n", \
 				pipe->buflist->empty->pos, pipe->buflist->empty->buf + pipe->buflist->empty->pos);
 		}
 	      } else {
-		debug_printf("eof from pipe %s detected\n", pipe->name);		
+		CPW_DEBUG("eof from pipe %s detected\n", pipe->name);		
 		close(pipe->fd);
 		pipe->fd = open((char*)pipe->name, O_RDONLY|O_NONBLOCK);
 		if (pipe->fd < 0) {
-		  debug_deep_printf("error opening pipe %s%s\n", PIPE_DIR, pipe->name);
+		  CPW_DEBUG_DEEP("error opening pipe %s%s\n", PIPE_DIR, pipe->name);
 		  pipe->status = CPW_PIPE_STATUS_CLOSED;
 		} else {
-		  debug_deep_printf("pipe %s%s reopened\n", PIPE_DIR, pipe->name);
+		  CPW_DEBUG_DEEP("pipe %s%s reopened\n", PIPE_DIR, pipe->name);
 		  pipe->status = CPW_PIPE_STATUS_OPEN;
 		}
 	      }
 	    } else {
-	      debug_printf("error during read %d bytes to buffer from pipe %s\n", readbytes, pipe->name);
+	      CPW_DEBUG("error during read %d bytes to buffer from pipe %s\n", readbytes, pipe->name);
 	    }
 	  } else {
-	    debug_printf("read buffer in empty list but full\n");
+	    CPW_DEBUG("read buffer in empty list but full\n");
 	  } 
 	}
       }      
@@ -101,11 +102,11 @@ void cpw_pipe_write(cpwpipe *pipe) {
       if ( pipe->buflist->inuse ) {
 	if ( pipe->buflist->inuse->buf ) {
 	  if ( pipe->buflist->inuse->pos < pipe->buflist->inuse->size ) {
-	    debug_printf("writing to pipe %s, buffer pos %d\n", pipe->name, pipe->buflist->inuse->pos);
+	    CPW_DEBUG("writing to pipe %s, buffer pos %d\n", pipe->name, pipe->buflist->inuse->pos);
 	    writebytes = pipe->buflist->inuse->size - pipe->buflist->inuse->pos;
 	    pbuf = pipe->buflist->inuse->buf + pipe->buflist->inuse->pos;
 	    r = write( pipe->fd, pbuf, writebytes );
-	    debug_printf("%d bytes written, framesize %d\n", r, pipe->buflist->inuse->size);
+	    CPW_DEBUG("%d bytes written, framesize %d\n", r, pipe->buflist->inuse->size);
 	    if ( r >= 0 ) {
 	      if ( r > 0 ) {
 		if ( r == writebytes ) {
@@ -117,13 +118,13 @@ void cpw_pipe_write(cpwpipe *pipe) {
 		  pipe->buflist->inuse->pos += r;
 		}
 	      } else {
-		debug_printf("no bytes written to %s\n", pipe->name);		
+		CPW_DEBUG("no bytes written to %s\n", pipe->name);		
 	      }
 	    } else {
-	      debug_printf("error during write of %d bytes from buffer to pipe %s\n", writebytes, pipe->name);
+	      CPW_DEBUG("error during write of %d bytes from buffer to pipe %s\n", writebytes, pipe->name);
 	    }
 	  } else {
-	    debug_printf("write buffer in inuse list but empty\n");
+	    CPW_DEBUG("write buffer in inuse list but empty\n");
 	  } 
 	}
       }      
@@ -135,12 +136,12 @@ cpwpipe *cpw_pipe_create_with_buflist(char *name, pipe_type type) {
   cpwpipe *pipe;
   pipe = cpw_pipe_create(name, type);
   if ( pipe == NULL ) {
-    debug_printf("error creating cpwpipe\n");
+    CPW_DEBUG("error creating cpwpipe\n");
     return NULL;
   }
   pipe->buflist = cpw_buflist_new(PIPE_BUF_DEPTH); 
   if (pipe->buflist == NULL) {
-    debug_printf("error creating buflist\n");
+    CPW_DEBUG("error creating buflist\n");
     free(pipe->name);
     free(pipe);
     return NULL;
@@ -165,9 +166,9 @@ cpwpipe *cpw_pipe_create(char *name, pipe_type type) {
   snprintf(pipe->name, NAME_BUF_LEN, "%s%s", PIPE_DIR, name);
   r = mkfifo((char*)pipe->name, 0666);
   if ( r != 0)
-    debug_printf("error creating fifo %s%s, may exist\n", PIPE_DIR, name);
+    CPW_DEBUG("error creating fifo %s%s, may exist\n", PIPE_DIR, name);
   else
-    debug_printf("fifo %s%s created\n", PIPE_DIR, name);
+    CPW_DEBUG("fifo %s%s created\n", PIPE_DIR, name);
   switch ( type ) {
   case PIPE_INPUT:
     pipe->fd = open((char*)pipe->name, O_RDONLY|O_NONBLOCK);
@@ -177,14 +178,14 @@ cpwpipe *cpw_pipe_create(char *name, pipe_type type) {
     break;    
   }
   if (pipe->fd < 0) {
-    debug_printf("error opening pipe %s%s\n", PIPE_DIR, name);
+    CPW_DEBUG("error opening pipe %s%s\n", PIPE_DIR, name);
     pipe->status = CPW_PIPE_STATUS_CLOSED;
   } else {
-    debug_printf("pipe %s%s opened\n", PIPE_DIR, name);
+    CPW_DEBUG("pipe %s%s opened\n", PIPE_DIR, name);
     pipe->status = CPW_PIPE_STATUS_OPEN;
   }
   /* cpw_pipe_register(pipe); */
-  debug_printf("cpw pipe created\n");
+  CPW_DEBUG("cpw pipe created\n");
   return pipe;
 }
 
@@ -206,7 +207,7 @@ cpwbuflist *cpw_pipe_set_buflist(cpwpipe *pipe, cpwbuflist *buflist) {
 
 void cpw_pipe_free(cpwpipe *pipe) {
   if ( pipe != NULL ) {
-    debug_printf("freeing pipe resources\n");
+    CPW_DEBUG("freeing pipe resources\n");
     close(pipe->fd);
     cpw_buflist_free(pipe->buflist);
     if (pipe->name != NULL) free(pipe->name);
@@ -219,28 +220,28 @@ cpwbuflist *cpw_buflist_new(int depth) {
   cpwpipebuf *pipebuf;
   int i;
   if ( depth <= 0 ) {
-    printf("invalid pipebufdepth of %d, aborting\n", depth);
+    CPW_LOG(CPW_LOG_ERROR, "invalid pipebufdepth of %d, aborting\n", depth);
     return NULL;
   }
   if (depth > MAX_PIPE_BUF_DEPTH ) {
     depth = MAX_PIPE_BUF_DEPTH;
-    printf("pipebufdepth %d  exceeds MAX_PIPE_BUF_DEPTH %d, clamping\n", depth, MAX_PIPE_BUF_DEPTH); 
+    CPW_LOG( CPW_LOG_WARNING, "pipebufdepth %d  exceeds MAX_PIPE_BUF_DEPTH %d, clamping\n", depth, MAX_PIPE_BUF_DEPTH); 
   }
   buflist = malloc(sizeof(cpwbuflist));
   if ( buflist == NULL ) {
-    printf("error getting mem for buflist\n");
+    CPW_LOG( CPW_LOG_ERROR, "error getting mem for buflist\n");
     return NULL;
   } else {
     cpw_buflist_init(buflist);
     for ( i = 0; i < depth; i++ ) {
       pipebuf = cpw_pipebuf_new(FRAME_SIZE);
       if ( pipebuf == NULL ) {
-	printf("error creating pipebuf, depth %d, aborting\n", i);
+	CPW_LOG( CPW_LOG_ERROR, "error creating pipebuf, depth %d, aborting\n", i);
 	cpw_buflist_free(buflist);
 	return NULL;
       }
       DL_APPEND(buflist->empty, pipebuf);      
-      debug_printf("pipebuf depth %d created and appended to list\n", i);
+      CPW_DEBUG("pipebuf depth %d created and appended to list\n", i);
     }
     return buflist;    
   }
@@ -265,10 +266,10 @@ void cpw_buflist_buffer_full(cpwbuflist *buflist, cpwpipebuf *pipebuf) {
 	  pipebuf->pos = 0;
 	  DL_APPEND(buflist->inuse, pipebuf);
 	} else {
-	  printf("buffer not in list to switch to full\n");
+	  CPW_LOG( CPW_LOG_ERROR, "buffer not in list to switch to full\n");
 	}
       } else {
-	printf("pipebuf not full to switch to inuse list\n");
+	CPW_LOG( CPW_LOG_ERROR, "pipebuf not full to switch to inuse list\n");
       }
     }
   }
@@ -286,10 +287,10 @@ void cpw_buflist_buffer_empty(cpwbuflist *buflist, cpwpipebuf *pipebuf) {
 	  pipebuf->pos = 0;
 	  DL_APPEND(buflist->empty, pipebuf);
 	} else {
-	  printf("buffer not in list to switch to empty\n");
+	  CPW_LOG( CPW_LOG_ERROR, "buffer not in list to switch to empty\n");
 	}
       } else {
-	printf("pipebuf not empty to switch to empty list\n");
+	CPW_LOG( CPW_LOG_ERROR, "pipebuf not empty to switch to empty list\n");
       }
     }
   }
@@ -308,7 +309,7 @@ void cpw_buflist_free(cpwbuflist *buflist) {
       cpw_pipebuf_free(ibuf);
     }
   } else {
-    printf("no buflist to free\n");
+    CPW_LOG( CPW_LOG_ERROR, "no buflist to free\n");
   }
 }
 
@@ -316,7 +317,7 @@ cpwpipebuf *cpw_pipebuf_new(int bufsize) {
   cpwpipebuf *pipebuf;
   pipebuf = malloc(sizeof(cpwpipebuf));
   if ( pipebuf == NULL ) {
-    printf("error allocating mem for struct pipebuf\n");
+    CPW_LOG( CPW_LOG_ERROR, "error allocating mem for struct pipebuf\n");
     return  NULL;
   } else {
     cpw_pipebuf_init(pipebuf, bufsize);
@@ -335,15 +336,15 @@ int cpw_pipebuf_init(cpwpipebuf *pipebuf, int bufsize) {
 	pipebuf->prev = NULL;
 	return 0;
       } else {
-	printf("error init pipebuf: malloc of size %d failed\n", bufsize);
+	CPW_LOG( CPW_LOG_ERROR, "error init pipebuf: malloc of size %d failed\n", bufsize);
 	return -1;	
       }
     } else {
-      printf("error init pipebuf: framesize %d exceeds MAX_FRAME_SIZE %d\n", bufsize, MAX_FRAME_SIZE);
+      CPW_LOG( CPW_LOG_ERROR, "error init pipebuf: framesize %d exceeds MAX_FRAME_SIZE %d\n", bufsize, MAX_FRAME_SIZE);
       return -1;
     }
   } else {
-    printf("error init pipebuf: buf parameter invalid\n");
+    CPW_LOG( CPW_LOG_ERROR, "error init pipebuf: buf parameter invalid\n");
     return -1;
   }
 }

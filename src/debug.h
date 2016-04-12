@@ -10,10 +10,11 @@
    gcc -DDEBUG ( or -DDEBUG_DEEP ) will be overwritten. 
 */
 
-#define debug_printf(...) \
+#define CPW_DEBUG(...) \
   do { if (DEBUG) fprintf(stderr, ## __VA_ARGS__); } while (0)
 
-#define debug_deep_printf(...) \
+#define CPW_DEBUG_DEEP(...) \
   do { if (DEBUG_DEEP) fprintf(stderr, ## __VA_ARGS__); } while (0)
+
 
 #endif

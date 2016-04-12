@@ -16,8 +16,9 @@
 #include "arg.h"
 #include "process.h"
 #include "pipe.h"
+#include "log.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #include "debug.h"
 
 cpwarguments arguments;
@@ -50,17 +51,17 @@ int teststream_start(cpwpipe *pipe) {
   args[11] = strdup("320x240");
   args[12] = pipe->name;
   args[13] = NULL;
-  printf("ffmpeg args: %s %s %s %s %s %s %s %s %s %s %s %s %s\n", \
+  CPW_DEBUG("ffmpeg args: %s %s %s %s %s %s %s %s %s %s %s %s %s\n", \
 	 args[0], args[1], args[2], args[3], args[4], args[5],		\
 	 args[6], args[7], args[8], args[9], args[10], args[11], args[12]);
 
   r = cpw_process_create("/home/tdk/bin/ffmpeg", args);
   if (r > 0) {
-    printf("process created, id: %d\n", r);
+    CPW_DEBUG("process created, id: %d\n", r);
     gpid = r;
     return 0;
   } else {
-    printf("create process failed\n");
+    CPW_DEBUG("create process failed\n");
     return -1;
   }
 }
@@ -93,6 +94,7 @@ int main(int argc, char **argv)
     sigaction (SIGTERM, &new_action, NULL);
 
   /* command line parsing */
+  cpw_log_init();
   cpw_arg_parse(&arguments, argc, argv);
   /* main initialization ends here */
 
@@ -102,27 +104,29 @@ int main(int argc, char **argv)
   /* create test pipeline */
   inpipe = cpw_pipe_create_with_buflist("input01", PIPE_INPUT);
   if (inpipe == NULL) {
-    printf("error creating inpipe test struct\n");
+    CPW_LOG(CPW_LOG_ERROR, "error creating inpipe test struct\n");
+    cpw_log_done();
     exit(1);
   }
 
   outpipe = cpw_pipe_create("output01", PIPE_OUTPUT);
   if (outpipe == NULL) {
-    printf("error creating outpipe test struct\n");
+    CPW_LOG(CPW_LOG_ERROR, "error creating outpipe test struct\n");
     cpw_pipe_free(inpipe);
+    cpw_log_done();
     exit(1);
   }
 
   cpw_pipe_set_buflist(outpipe, inpipe->buflist);
 
-  teststream_start(inpipe);
+  /*teststream_start(inpipe);*/
 
   cpw_pipe_register(inpipe);
   cpw_pipe_register(outpipe);
 
   /*  inpipe = cpw_pipe_create_with_buflist("input02", PIPE_INPUT);
   if (inpipe == NULL) {
-    printf("error creating inpipe test struct\n");
+    CPW_LOG(CPW_LOG_ERROR, "error creating inpipe test struct\n");
     exit(1);
   }
   cpw_pipe_register(inpipe);
@@ -133,19 +137,19 @@ int main(int argc, char **argv)
   FD_ZERO(&rfds);
   FD_ZERO(&wfds);
 
-  debug_printf("entering main loop\n");
+  CPW_DEBUG("entering main loop\n");
  
   while(1) {
     FD_ZERO(&rfds);
     FD_ZERO(&wfds);
 
-    debug_printf("\n");
+    CPW_DEBUG("\n");
     /* watch for registered pipes */
     highestfd = 0;
     for(ipipe=globalinputlist; ipipe != NULL; ipipe=ipipe->hh.next) {      
       if ( ipipe->buflist == NULL ) break;
       if ( ipipe->buflist->empty != NULL ) {
-	debug_printf("adding pipe to rfd set\n");
+	CPW_DEBUG("adding pipe to rfd set\n");
 	FD_SET(ipipe->fd, &rfds);
 	if ( ipipe->fd > highestfd ) highestfd = ipipe->fd; 
       } else {
@@ -155,12 +159,12 @@ int main(int argc, char **argv)
     for(ipipe=globaloutputlist; ipipe != NULL; ipipe=ipipe->hh.next) {      
       if ( ipipe->buflist == NULL ) break;
       if ( ipipe->buflist->inuse != NULL ) {
-	debug_printf("adding pipe to wfd set\n");
+	CPW_DEBUG("adding pipe to wfd set\n");
 	FD_SET(ipipe->fd, &wfds);
 	if ( ipipe->fd > highestfd ) highestfd = ipipe->fd; 
       } else {
 	/*	FD_CLR(ipipe->fd, &wfds);*/
-	debug_printf("warning: buffer of outpipe %s empty (no bytes to write)\n", ipipe->name);
+	CPW_DEBUG("warning: buffer of outpipe %s empty (no bytes to write)\n", ipipe->name);
       }
     }
 
@@ -168,7 +172,7 @@ int main(int argc, char **argv)
     r = pselect(highestfd + 1, &rfds, &wfds, NULL, NULL, NULL);
 
     if (r > 0) { 
-      debug_printf("input/ouput ready\n");
+      CPW_DEBUG("input/ouput ready\n");
       /* first we check output channels */
       for(ipipe=globaloutputlist; ipipe != NULL; ipipe=ipipe->hh.next) {      
 	if ( FD_ISSET(ipipe->fd, &wfds) ) { 
@@ -187,19 +191,19 @@ int main(int argc, char **argv)
     } else {
       switch (errno) {
       case EBADF: 
-	printf("error during pselect: EBADF\n");
+	CPW_LOG(CPW_LOG_ERROR, "error during pselect: EBADF\n");
 	break;
 	case EINTR: 
-	  printf("signal during pselect: EINTR\n");
+	  CPW_LOG(CPW_LOG_INFO, "signal during pselect: EINTR\n");
 	  break;
       case EINVAL: 
-	printf("error during pselect: EINVAL\n");
+	CPW_LOG(CPW_LOG_ERROR, "error during pselect: EINVAL\n");
 	break;
       case ENOMEM: 
-	printf("error during pselect: ENOMEM\n");
+	CPW_LOG(CPW_LOG_ERROR, "error during pselect: ENOMEM\n");
 	break;
       default:
-	printf("error during pselect: unknown (should never happen)\n");
+	CPW_LOG(CPW_LOG_ERROR, "error during pselect: unknown (should never happen)\n");
       }
     }
     if (last_signum != 0) {
@@ -214,9 +218,10 @@ int main(int argc, char **argv)
   HASH_ITER(hh, globaloutputlist, ipipe, tpipe) {
     cpw_pipe_free(ipipe);
   }    
-  printf("%d signals handled\n", count);
+  CPW_LOG(CPW_LOG_INFO, "%d signals handled\n", count);
   kill(gpid, SIGTERM);
-  printf("done\n");
+  CPW_LOG(CPW_LOG_INFO, "done\n");
+  cpw_log_done();
   
   return 0;
   
