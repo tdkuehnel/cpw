@@ -9,10 +9,9 @@
 
 #include "pipe.h"
 
-#include "debug.h"
-
 #define DEBUG 0
-#define DEBUG2 0
+#define DEBUG_DEEP 0
+#include "debug.h"
 
 void cpw_pipe_init(){
   globalinputlist = NULL;
@@ -48,25 +47,25 @@ void cpw_pipe_read(cpwpipe *pipe) {
       if ( pipe->buflist->empty ) {
 	if ( pipe->buflist->empty->buf ) {
 	  if ( pipe->buflist->empty->pos  < pipe->buflist->empty->size ) {
-	    debug2_printf("\nreading from pipe %s, buffer pos %d\n", pipe->name, pipe->buflist->empty->pos);
+	    debug_deep_printf("\nreading from pipe %s, buffer pos %d\n", pipe->name, pipe->buflist->empty->pos);
 	    readbytes = pipe->buflist->empty->size - pipe->buflist->empty->pos;
-	    debug2_printf("readbytes: 0x%08x, (%d)\n", readbytes, readbytes);
+	    debug_deep_printf("readbytes: 0x%08x, (%d)\n", readbytes, readbytes);
 	    pbuf = pipe->buflist->empty->buf + pipe->buflist->empty->pos;
-	    debug2_printf("buf: 0x%08x, pbuf: 0x%08x, difference: 0x%08x\n", pipe->buflist->empty->buf, pbuf, pbuf - pipe->buflist->empty->buf);
+	    debug_deep_printf("buf: 0x%08x, pbuf: 0x%08x, difference: 0x%08x\n", pipe->buflist->empty->buf, pbuf, pbuf - pipe->buflist->empty->buf);
 
 	    r = read( pipe->fd, pbuf, readbytes );
-	    debug2_printf("read 0x%08x (%d) bytes, framesize 0x%08x (%d)\n", r, r, pipe->buflist->empty->size, pipe->buflist->empty->size);
+	    debug_deep_printf("read 0x%08x (%d) bytes, framesize 0x%08x (%d)\n", r, r, pipe->buflist->empty->size, pipe->buflist->empty->size);
 	    if ( r >= 0 ) {
 	      if ( r > 0 ) {
 		if ( r == readbytes ) {
 		  /* read complete buffer */
 		  pipe->buflist->empty->pos += r;		  
-		  debug2_printf("buffer pos now: 0x%08x, next read from other buffer\n", pipe->buflist->empty->pos);
+		  debug_deep_printf("buffer pos now: 0x%08x, next read from other buffer\n", pipe->buflist->empty->pos);
 		  cpw_buflist_buffer_full(pipe->buflist, pipe->buflist->empty);
 		} else {
 		  /* read part of buffer */
 		  pipe->buflist->empty->pos += r;
-		  debug2_printf("buffer pos now: 0x%08x, next read at 0x%08x\n", \
+		  debug_deep_printf("buffer pos now: 0x%08x, next read at 0x%08x\n", \
 				pipe->buflist->empty->pos, pipe->buflist->empty->buf + pipe->buflist->empty->pos);
 		}
 	      } else {
@@ -74,10 +73,10 @@ void cpw_pipe_read(cpwpipe *pipe) {
 		close(pipe->fd);
 		pipe->fd = open((char*)pipe->name, O_RDONLY|O_NONBLOCK);
 		if (pipe->fd < 0) {
-		  debug2_printf("error opening pipe %s%s\n", PIPE_DIR, pipe->name);
+		  debug_deep_printf("error opening pipe %s%s\n", PIPE_DIR, pipe->name);
 		  pipe->status = CPW_PIPE_STATUS_CLOSED;
 		} else {
-		  debug2_printf("pipe %s%s reopened\n", PIPE_DIR, pipe->name);
+		  debug_deep_printf("pipe %s%s reopened\n", PIPE_DIR, pipe->name);
 		  pipe->status = CPW_PIPE_STATUS_OPEN;
 		}
 	      }

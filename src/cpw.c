@@ -13,12 +13,14 @@
 
 #include "utlist.h"
 
+#include "arg.h"
 #include "process.h"
 #include "pipe.h"
 
+#define DEBUG 0
 #include "debug.h"
 
-#define DEBUG 0
+cpwarguments arguments;
 
 cpwpipe *globalinputlist;
 cpwpipe *globaloutputlist;
@@ -90,6 +92,8 @@ int main(int argc, char **argv)
   if (old_action.sa_handler != SIG_IGN)
     sigaction (SIGTERM, &new_action, NULL);
 
+  /* command line parsing */
+  cpw_arg_parse(&arguments, argc, argv);
   /* main initialization ends here */
 
   /* initialize global pipelists */
