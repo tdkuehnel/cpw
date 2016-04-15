@@ -1,6 +1,6 @@
 #include <argp.h>
 #include "arg.h"
-#include "config.h"
+#include "autoconfig.h"
 #include "log.h"
 
 #define DEBUG 0
@@ -77,6 +77,7 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 void cpw_arg_parse(cpwarguments *arguments, int argc, char **argv) {
 
   /* fill in default values */
+  /* FIXME: take cpw.conf path from configure values */
   arguments->config_file = "/etc/cpw.conf";
   arguments->log_level = CPW_LOG_LEVEL_DEFAULT;
 

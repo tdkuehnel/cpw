@@ -5,7 +5,12 @@
 
 typedef struct cpwcommand {
   struct cpwcommand *next, *prev;
-  char *uname[CPW_COMMAND_MAX_LENGTH];
-}cpwcommand;
+  const char *uname;
+} cpwcommand;
+
+cpwcommand *cpw_command_new();
+void cpw_command_init(cpwcommand *command);
+int cpw_command_add_path(cpwcommand *command, const char *path);
+int cpw_command_set_value(cpwcommand *command, const char *cmd, const char *value);
 
 #endif

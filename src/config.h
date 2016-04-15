@@ -1,26 +1,24 @@
-/* config.h.  Generated from config.h.in by configure.  */
-/* config.h.in.  Generated from configure.ac by autoheader.  */
+#ifndef CPW_CONFIG_H
+#define CPW_CONFIG_H
 
-/* Define to 1 if you have the `strtol' function. */
-#define HAVE_STRTOL 1
+#include <stdio.h>
+#include "context.h"
 
-/* Name of package */
-#define PACKAGE "cpw"
+#define CPW_CONFIG_MAX_LINE_LENGTH 1024
+#define CPW_CONFIG_MAX_TAG_LENGTH 64
 
-/* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT "tdk@gplview.de"
+typedef struct cpwconfig {
+  int line_num;
+  cpwcommand *command;
+} cpwconfig;
 
-/* Define to the full name of this package. */
-#define PACKAGE_NAME "cpw"
+typedef void (*cpw_process_config_func)(void *pointer );
 
-/* Define to the full name and version of this package. */
-#define PACKAGE_STRING "cpw 0.0.1"
+typedef struct cpwconfigtag {
+  const char *tag[CPW_CONFIG_MAX_TAG_LENGTH];
+  cpw_process_config_func *func;
+} cpwconfigtag;
 
-/* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "cpw"
+int cpw_config_init(struct cpwcontext *context);
 
-/* Define to the version of this package. */
-#define PACKAGE_VERSION "0.0.1"
-
-/* Version number of package */
-#define VERSION "0.0.1"
+#endif

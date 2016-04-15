@@ -1,7 +1,7 @@
 #ifndef CPW_ARG
 #define CPW_ARG
 
-/* Used by main to communicate with parse_opt. */
+/* from main config or command line arguments. */
 typedef struct cpwarguments
 {
   char *args[2];                /* arg1 & arg2 */

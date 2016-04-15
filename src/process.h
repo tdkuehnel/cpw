@@ -37,7 +37,7 @@ typedef struct cpwjob {
 
 typedef struct cpwprocess {
   struct cpwprocess *next, *prev;
-  char *args[CPW_PROCESS_MAX_ARGS];
+  const char *args[CPW_PROCESS_MAX_ARGS];
   char arg[CPW_PROCESS_ARG_LEN + 1];
   int pid;
   cpwsource *source;
@@ -46,8 +46,12 @@ typedef struct cpwprocess {
 
 cpwprocess *cpw_process_new();
 void cpw_process_init(cpwprocess *process);
-int cpw_process_add_source(cpwsource *source, cpwprocess *process);
-int cpw_process_add_output(cpwoutput *output, cpwprocess *process);
+int cpw_process_add_source(cpwprocess *process, cpwsource *source);
+int cpw_process_add_output(cpwprocess *process, cpwoutput *output);
+int cpw_process_add_arg(cpwprocess *process, const char *arg);
+
+int cpw_process_set_value(cpwprocess *process, const char *cmd, const char *value);
+
 void cpw_process_free(cpwprocess *process);
 
 /* process related things may go in a seperate file */

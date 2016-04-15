@@ -7,27 +7,26 @@
 
 #include "utlist.h"
 
-#include "pipe.h"
-#include "log.h"
+#include "context.h"
 
 #define DEBUG 0
 #define DEBUG_DEEP 0
 #include "debug.h"
 
-void cpw_pipe_init(){
-  globalinputlist = NULL;
-  globaloutputlist = NULL;
+void cpw_pipe_init(cpwcontext *context){
+  context->globalinputlist = NULL;
+  context->globaloutputlist = NULL;
 }
 
-int cpw_pipe_register(cpwpipe *pipe) {
+int cpw_pipe_register(cpwcontext *context, cpwpipe *pipe) {
   int i;
   cpwpipe *p;
   if ( pipe != NULL ) { 
     if ( pipe->type == PIPE_INPUT ) {
-      HASH_ADD_INT(globalinputlist, fd, pipe);      
+      HASH_ADD_INT(context->globalinputlist, fd, pipe);      
     }
     if ( pipe->type == PIPE_OUTPUT ) {
-      HASH_ADD_INT(globaloutputlist, fd, pipe);      
+      HASH_ADD_INT(context->globaloutputlist, fd, pipe);      
     }
   } else {
     CPW_DEBUG("no pipe to register\n");
@@ -220,23 +219,23 @@ cpwbuflist *cpw_buflist_new(int depth) {
   cpwpipebuf *pipebuf;
   int i;
   if ( depth <= 0 ) {
-    CPW_LOG(CPW_LOG_ERROR, "invalid pipebufdepth of %d, aborting\n", depth);
+    CPW_LOG_ERROR( "invalid pipebufdepth of %d, aborting\n", depth);
     return NULL;
   }
   if (depth > MAX_PIPE_BUF_DEPTH ) {
     depth = MAX_PIPE_BUF_DEPTH;
-    CPW_LOG( CPW_LOG_WARNING, "pipebufdepth %d  exceeds MAX_PIPE_BUF_DEPTH %d, clamping\n", depth, MAX_PIPE_BUF_DEPTH); 
+    CPW_LOG_WARNING( "pipebufdepth %d  exceeds MAX_PIPE_BUF_DEPTH %d, clamping\n", depth, MAX_PIPE_BUF_DEPTH); 
   }
   buflist = malloc(sizeof(cpwbuflist));
   if ( buflist == NULL ) {
-    CPW_LOG( CPW_LOG_ERROR, "error getting mem for buflist\n");
+    CPW_LOG_ERROR( "error getting mem for buflist\n");
     return NULL;
   } else {
     cpw_buflist_init(buflist);
     for ( i = 0; i < depth; i++ ) {
       pipebuf = cpw_pipebuf_new(FRAME_SIZE);
       if ( pipebuf == NULL ) {
-	CPW_LOG( CPW_LOG_ERROR, "error creating pipebuf, depth %d, aborting\n", i);
+	CPW_LOG_ERROR( "error creating pipebuf, depth %d, aborting\n", i);
 	cpw_buflist_free(buflist);
 	return NULL;
       }
@@ -266,10 +265,10 @@ void cpw_buflist_buffer_full(cpwbuflist *buflist, cpwpipebuf *pipebuf) {
 	  pipebuf->pos = 0;
 	  DL_APPEND(buflist->inuse, pipebuf);
 	} else {
-	  CPW_LOG( CPW_LOG_ERROR, "buffer not in list to switch to full\n");
+	  CPW_LOG_ERROR( "buffer not in list to switch to full\n");
 	}
       } else {
-	CPW_LOG( CPW_LOG_ERROR, "pipebuf not full to switch to inuse list\n");
+	CPW_LOG_ERROR( "pipebuf not full to switch to inuse list\n");
       }
     }
   }
@@ -287,10 +286,10 @@ void cpw_buflist_buffer_empty(cpwbuflist *buflist, cpwpipebuf *pipebuf) {
 	  pipebuf->pos = 0;
 	  DL_APPEND(buflist->empty, pipebuf);
 	} else {
-	  CPW_LOG( CPW_LOG_ERROR, "buffer not in list to switch to empty\n");
+	  CPW_LOG_ERROR( "buffer not in list to switch to empty\n");
 	}
       } else {
-	CPW_LOG( CPW_LOG_ERROR, "pipebuf not empty to switch to empty list\n");
+	CPW_LOG_ERROR( "pipebuf not empty to switch to empty list\n");
       }
     }
   }
@@ -309,7 +308,7 @@ void cpw_buflist_free(cpwbuflist *buflist) {
       cpw_pipebuf_free(ibuf);
     }
   } else {
-    CPW_LOG( CPW_LOG_ERROR, "no buflist to free\n");
+    CPW_LOG_ERROR( "no buflist to free\n");
   }
 }
 
@@ -317,7 +316,7 @@ cpwpipebuf *cpw_pipebuf_new(int bufsize) {
   cpwpipebuf *pipebuf;
   pipebuf = malloc(sizeof(cpwpipebuf));
   if ( pipebuf == NULL ) {
-    CPW_LOG( CPW_LOG_ERROR, "error allocating mem for struct pipebuf\n");
+    CPW_LOG_ERROR( "error allocating mem for struct pipebuf\n");
     return  NULL;
   } else {
     cpw_pipebuf_init(pipebuf, bufsize);
@@ -336,15 +335,15 @@ int cpw_pipebuf_init(cpwpipebuf *pipebuf, int bufsize) {
 	pipebuf->prev = NULL;
 	return 0;
       } else {
-	CPW_LOG( CPW_LOG_ERROR, "error init pipebuf: malloc of size %d failed\n", bufsize);
+	CPW_LOG_ERROR( "error init pipebuf: malloc of size %d failed\n", bufsize);
 	return -1;	
       }
     } else {
-      CPW_LOG( CPW_LOG_ERROR, "error init pipebuf: framesize %d exceeds MAX_FRAME_SIZE %d\n", bufsize, MAX_FRAME_SIZE);
+      CPW_LOG_ERROR( "error init pipebuf: framesize %d exceeds MAX_FRAME_SIZE %d\n", bufsize, MAX_FRAME_SIZE);
       return -1;
     }
   } else {
-    CPW_LOG( CPW_LOG_ERROR, "error init pipebuf: buf parameter invalid\n");
+    CPW_LOG_ERROR( "error init pipebuf: buf parameter invalid\n");
     return -1;
   }
 }

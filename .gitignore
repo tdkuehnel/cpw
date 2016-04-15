@@ -9,7 +9,7 @@ Makefile.in
 /autoscan-*.log
 /aclocal.m4
 /compile
-/config.h.in
+/autoconfig.h.in
 /configure
 /configure.scan
 /depcomp
@@ -21,8 +21,13 @@ Makefile.in
 Makefile
 *.o
 *~
-config.h
+autoconfig.h
 config.log
 config.status
 cpw
+check_command
+check_config
+check_context
+check_process
+.dirstamp
 .deps

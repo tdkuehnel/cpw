@@ -1,5 +1,8 @@
-#ifndef CPW_PIPE_H
-#define CPW_PIPE_H
+#ifndef _CPW_PIPE_H_
+#define _CPW_PIPE_H_
+
+#include "uthash.h"
+#include "context.h"
 
 #define PIPE_DIR "/tmp/"
 #define NAME_BUF_LEN   256
@@ -10,7 +13,6 @@
 #define PIPE_BUF_DEPTH 2
 #define MAX_PIPE_BUF_DEPTH 32
 
-#include "uthash.h"
 
 typedef struct cpwpipebuf {
   struct cpwpipebuf *next;
@@ -50,12 +52,12 @@ typedef struct cpwpipe {
 extern cpwpipe *globalinputlist;
 extern cpwpipe *globaloutputlist;
 
-void cpw_pipe_init();
+void cpw_pipe_init(struct cpwcontext *context);
 cpwpipe *cpw_pipe_create_with_buflist(char *name, pipe_type type);
 cpwpipe *cpw_pipe_create(char *name, pipe_type type);
 void cpw_pipe_read(cpwpipe *pipe);
 void cpw_pipe_write(cpwpipe *pipe);
-int cpw_pipe_register(cpwpipe *pipe);
+int cpw_pipe_register(struct cpwcontext *context, cpwpipe *pipe);
 int cpw_pipe_sort(cpwpipe *a, cpwpipe *b);
 void cpw_pipe_free(cpwpipe *pipe);
 cpwbuflist *cpw_pipe_set_buflist(cpwpipe *pipe, cpwbuflist *buflist);
