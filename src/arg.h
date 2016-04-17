@@ -1,5 +1,5 @@
-#ifndef CPW_ARG
-#define CPW_ARG
+#ifndef _CPW_ARG_
+#define _CPW_ARG_
 
 /* from main config or command line arguments. */
 typedef struct cpwarguments

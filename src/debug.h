@@ -13,6 +13,8 @@
 #define CPW_DEBUG(...) \
   do { if (DEBUG) fprintf(stderr, ## __VA_ARGS__); } while (0)
 
+#define CPW_NO_DEBUG(...) 
+
 #define CPW_DEBUG_DEEP(...) \
   do { if (DEBUG_DEEP) fprintf(stderr, ## __VA_ARGS__); } while (0)
 

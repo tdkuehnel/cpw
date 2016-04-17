@@ -86,8 +86,9 @@ void cpw_init(int argc, char **argv) {
   /* initialize global pipelists */
   context = cpw_context_new();
   cpw_context_init(context);
-  cpw_arg_parse(&context->arguments, argc, argv);
-  cpw_log_init(context->arguments.log_level);
+
+  cpw_arg_parse(context->arguments, argc, argv);
+  cpw_log_init(context->arguments->log_level);
   CPW_LOG_INFO("%s\n", PACKAGE_STRING);
 
   cpw_config_init(context);

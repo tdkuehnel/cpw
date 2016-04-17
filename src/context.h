@@ -14,8 +14,8 @@ struct cpwcontext;
 
 typedef struct cpwcontext {
 
-  cpwconfig config;
-  cpwarguments arguments;
+  cpwconfig *config;
+  cpwarguments *arguments;
 
   /* global main stuff */ 
 

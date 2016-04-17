@@ -12,7 +12,87 @@ START_TEST (test_config_cpw_config_init)
   /* unit test code */
   cpwcontext *context;
 
+  context = cpw_context_new();
   ck_assert(cpw_config_init(context) != 0);
+  cpw_context_init(context);
+  ck_assert(cpw_config_init(context) == 0);
+
+}
+END_TEST
+
+START_TEST (test_config_cpw_tag_is_arg_allowed)
+{
+  /* unit test code */
+  cpwconfigtag configtags[] = {
+    {"Command", {"arg1", "arg2", "arg3", NULL}},
+    {"Process", {"arg4", "arg5", "arg6", NULL}},
+    {"Job",{NULL}},
+  };
+
+  int i;
+  cpwlinetoken linetoken;
+  
+  ck_assert(cpw_tag_is_arg_allowed(configtags, NELEMS(configtags), "Process", "arg5"));
+  ck_assert(!cpw_tag_is_arg_allowed(configtags, NELEMS(configtags), "Process", "arg1"));
+  ck_assert(!cpw_tag_is_arg_allowed(configtags, NELEMS(configtags), "Job", NULL));
+
+}
+END_TEST
+
+START_TEST (test_config_cpw_split_line)
+{
+  /* unit test code */
+  cpwconfigtag configtags[] = {
+    {"Command", {"arg", "arg2", "arg4"}},
+    {"Process", {"arg", "arg2", "arg4"}},
+    {"Job",{}},
+  };
+
+  int i;
+  cpwlinetoken linetoken;
+
+  for (i=0; i<CPW_CONFIG_MAX_LINE_TOKEN; i++) linetoken.token[i] = malloc(CPW_CONFIG_MAX_TAG_LENGTH);
+
+  char line1[CPW_CONFIG_MAX_LINE_LENGTH] = "<Command>\n";
+  char line2[CPW_CONFIG_MAX_LINE_LENGTH] = "<Command Name>\n";
+  char line3[CPW_CONFIG_MAX_LINE_LENGTH] = "<Command Name> #Comment\n";
+  char line4[CPW_CONFIG_MAX_LINE_LENGTH] = "     arg simple\n";
+  char line5[CPW_CONFIG_MAX_LINE_LENGTH] = "     arg \'simple quoted\' \n";
+  char line6[CPW_CONFIG_MAX_LINE_LENGTH] = "     arg \'simple quoted\' argument\n";
+  char line7[CPW_CONFIG_MAX_LINE_LENGTH] = "";
+
+  cpw_split_line(line1, &linetoken);
+  ck_assert(linetoken.num == 1);
+  ck_assert_str_eq(linetoken.token[0], "<Command>");
+  
+  cpw_split_line(line2, &linetoken);
+  ck_assert(linetoken.num == 2);
+  ck_assert_str_eq(linetoken.token[0], "<Command");
+  ck_assert_str_eq(linetoken.token[1], "Name>");  
+  
+  cpw_split_line(line3, &linetoken);
+  ck_assert(linetoken.num == 2);
+  ck_assert_str_eq(linetoken.token[0], "<Command");
+  ck_assert_str_eq(linetoken.token[1], "Name>");  
+  
+  cpw_split_line(line4, &linetoken);
+  ck_assert(linetoken.num == 2);
+  ck_assert_str_eq(linetoken.token[0], "arg");
+  ck_assert_str_eq(linetoken.token[1], "simple");  
+  
+  cpw_split_line(line5, &linetoken);
+  ck_assert(linetoken.num == 2);
+  ck_assert_str_eq(linetoken.token[0], "arg");
+  ck_assert_str_eq(linetoken.token[1], "simple quoted");  
+
+  cpw_split_line(line6, &linetoken);
+  ck_assert(linetoken.num == 3);
+  ck_assert_str_eq(linetoken.token[0], "arg");
+  ck_assert_str_eq(linetoken.token[1], "simple quoted");  
+  ck_assert_str_eq(linetoken.token[2], "argument");  
+  
+  cpw_split_line(line7, &linetoken);
+  ck_assert(linetoken.num == 0);
 }
 END_TEST
 
@@ -43,6 +123,17 @@ START_TEST (test_config_cpw_get_arg)
 
   cpw_get_arg(cmd, sizeof(cmd), &p);
   ck_assert_str_eq(cmd, "Another");
+}
+END_TEST
+
+START_TEST (test_config_cpw_is_closing_tag)
+{
+  /* unit test code */
+  char line1[CPW_CONFIG_MAX_LINE_LENGTH] = "<Tag>";
+  char line2[CPW_CONFIG_MAX_LINE_LENGTH] = "</Tag>";
+
+  ck_assert(cpw_is_closing_tag(line1) == 0);
+  ck_assert(cpw_is_closing_tag(line2) == 1);
 }
 END_TEST
 
@@ -129,26 +220,20 @@ END_TEST
 
 cpwprocess *process;
 
-START_TEST (test_config_cpw_config_process)
+START_TEST (test_config_cpw_config_validate_configfile)
 {
   /* unit test code */
-  FILE *f;
-  char line[CPW_CONFIG_MAX_LINE_LENGTH];
-  char cmd[64];
-  char tag[64];
-  const char *p;
+  cpwconfig config;
 
-  process = cpw_process_new();
-  ck_assert(process != NULL);
-  f = fopen("process.conf", "r");
-  ck_assert(f != NULL);
-  ck_assert(fgets(line, sizeof(line), f) != NULL);
-  p = line;
-  cpw_get_arg(cmd, sizeof(cmd), &p);
-  p = cmd;
-  cpw_get_tag(tag, sizeof(tag), &p);
-  ck_assert_str_eq(tag, "Process");
-  cpw_config_process(process, f);
+  config.line_num = 0;
+
+  ck_assert(cpw_config_validate_configfile(&config) != 0);
+
+  config.configfile_path = "valid_config.conf";
+  ck_assert(cpw_config_validate_configfile(&config) == 0);
+
+  config.configfile_path = "invalid_config.conf";
+  ck_assert(cpw_config_validate_configfile(&config) != 0);
 }
 END_TEST
 
@@ -163,6 +248,12 @@ Suite * config_suite(void)
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_config_cpw_config_init);
+    tcase_add_test(tc_core, test_config_cpw_split_line);
+    tcase_add_test(tc_core, test_config_cpw_get_arg);
+    tcase_add_test(tc_core, test_config_cpw_get_tag);
+    tcase_add_test(tc_core, test_config_cpw_is_closing_tag);
+    tcase_add_test(tc_core, test_config_cpw_tag_is_arg_allowed);
+    tcase_add_test(tc_core, test_config_cpw_config_validate_configfile);
     suite_add_tcase(s, tc_core);
     return s;
 }
