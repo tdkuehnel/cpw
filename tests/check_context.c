@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <check.h>
 #include "../src/context.h"
+
 /*#include "../src/process.h"*/
 
 #define NELEMS(x)  (sizeof(x) / sizeof((x)[0]))
@@ -15,6 +16,17 @@ START_TEST (test_context_cpw_context_new)
 }
 END_TEST
 
+START_TEST (test_context_cpw_context_init)
+{
+  /* unit test code */
+  cpwcontext *context;
+  
+  context = cpw_context_new();
+  cpw_context_init(context);
+  ck_assert(context->config != NULL && context->arguments != NULL);
+}
+END_TEST
+
 Suite * context_suite(void)
 {
     Suite *s;
@@ -26,6 +38,7 @@ Suite * context_suite(void)
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_context_cpw_context_new);
+    tcase_add_test(tc_core, test_context_cpw_context_init);
     suite_add_tcase(s, tc_core);
     return s;
 }

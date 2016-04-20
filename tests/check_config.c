@@ -13,9 +13,9 @@ START_TEST (test_config_cpw_config_init)
   cpwcontext *context;
 
   context = cpw_context_new();
-  ck_assert(cpw_config_init(context) != 0);
   cpw_context_init(context);
-  ck_assert(cpw_config_init(context) == 0);
+
+  ck_assert( cpw_config_init(context->config, "valid_config.conf") );
 
 }
 END_TEST
@@ -137,6 +137,19 @@ START_TEST (test_config_cpw_is_closing_tag)
 }
 END_TEST
 
+START_TEST (test_config_cpw_is_opening_tag)
+{
+  /* unit test code */
+  char line1[CPW_CONFIG_MAX_LINE_LENGTH] = "<Tag>";
+  char line2[CPW_CONFIG_MAX_LINE_LENGTH] = "</Tag>";
+  char line3[CPW_CONFIG_MAX_LINE_LENGTH] = "Tag";
+
+  ck_assert(cpw_is_opening_tag(line1) == 1);
+  ck_assert(cpw_is_opening_tag(line2) == 0);
+  ck_assert(cpw_is_opening_tag(line3) == 0);
+}
+END_TEST
+
 START_TEST (test_config_cpw_is_tag)
 {
   /* unit test code */
@@ -218,22 +231,99 @@ START_TEST (test_config_cpw_has_arg)
 }
 END_TEST
 
-cpwprocess *process;
-
-START_TEST (test_config_cpw_config_validate_configfile)
+START_TEST (test_config_cpw_parsecontext_new)
 {
   /* unit test code */
-  cpwconfig config;
+  cpwparsecontext *parsecontext;
 
-  config.line_num = 0;
+  parsecontext = cpw_parsecontext_new();
+  ck_assert( parsecontext != NULL );
+}
+END_TEST
 
-  ck_assert(cpw_config_validate_configfile(&config) != 0);
+START_TEST (test_config_cpw_parsecontext_init)
+{
+  /* unit test code */
+  cpwparsecontext *parsecontext;
 
-  config.configfile_path = "valid_config.conf";
-  ck_assert(cpw_config_validate_configfile(&config) == 0);
+  parsecontext = cpw_parsecontext_new();
+  cpw_parsecontext_init(parsecontext, "valid_config.conf");
+  ck_assert( parsecontext->linetoken->is_tag == 0 );
+  ck_assert_str_eq( parsecontext->configfile_path, "valid_config.conf");
+  ck_assert( parsecontext->configerror == NULL );
+}
+END_TEST
 
-  config.configfile_path = "invalid_config.conf";
-  ck_assert(cpw_config_validate_configfile(&config) != 0);
+START_TEST (test_config_cpw_parsecontext_next_token)
+{
+  /* unit test code */
+  cpwparsecontext *parsecontext;
+
+  parsecontext = cpw_parsecontext_new();
+  cpw_parsecontext_init(parsecontext, "check_next_token.conf");
+  
+  ck_assert( cpw_parsecontext_next_token(parsecontext) );
+  ck_assert( parsecontext->line_num == 3 );
+  ck_assert_str_eq( parsecontext->linetoken->token[0], "<token1" );
+  ck_assert_str_eq( parsecontext->linetoken->token[1], "token2>" );
+  ck_assert_str_eq( parsecontext->linetoken->token[2], "token3" );
+  ck_assert( parsecontext->linetoken->is_tag );
+  ck_assert( parsecontext->linetoken->is_opening_tag );
+  ck_assert( ! parsecontext->linetoken->is_closing_tag );
+
+  ck_assert( cpw_parsecontext_next_token(parsecontext) );
+  ck_assert( parsecontext->line_num == 5 );
+  ck_assert_str_eq( parsecontext->linetoken->token[0], "</token1>" );
+  ck_assert( parsecontext->linetoken->is_tag );
+  ck_assert( ! parsecontext->linetoken->is_opening_tag );
+  ck_assert( parsecontext->linetoken->is_closing_tag );
+
+}
+END_TEST
+
+START_TEST (test_config_cpw_parsecontext_add_config_error)
+{
+  /* unit test code */
+  cpwparsecontext *parsecontext;
+
+  parsecontext = cpw_parsecontext_new();
+  cpw_parsecontext_init(parsecontext, "check_next_token.conf");
+  cpw_parsecontext_next_token(parsecontext);
+  cpw_parsecontext_add_config_error(parsecontext, "test error. value: %s", parsecontext->linetoken->token[0]);
+  ck_assert( parsecontext->configerror != NULL);
+  ck_assert( parsecontext->configerror->line_num == 3 );
+  ck_assert_str_eq( parsecontext->configerror->error_message, "test error. value: <token1");
+}
+END_TEST
+
+START_TEST (test_config_cpw_parsecontext_done)
+{
+  /* unit test code */
+  cpwparsecontext *parsecontext;
+
+  parsecontext = cpw_parsecontext_new();
+  cpw_parsecontext_init(parsecontext, "check_next_token.conf");
+  cpw_parsecontext_done(&parsecontext);
+  ck_assert( ! parsecontext );
+}
+END_TEST
+
+START_TEST (test_config_cpw_config_validate_configfile_syntax)
+{
+  /* unit test code */
+  cpwparsecontext *parsecontext;
+
+  parsecontext = cpw_parsecontext_new();
+  cpw_parsecontext_init(parsecontext, "valid_config.conf");
+
+  ck_assert( cpw_config_validate_configfile_syntax(parsecontext) );
+  
+  cpw_parsecontext_done(&parsecontext);
+  parsecontext = cpw_parsecontext_new();
+  cpw_parsecontext_init(parsecontext, "invalid_config.conf");
+
+  ck_assert( ! cpw_config_validate_configfile_syntax(parsecontext) );
+
 }
 END_TEST
 
@@ -252,8 +342,15 @@ Suite * config_suite(void)
     tcase_add_test(tc_core, test_config_cpw_get_arg);
     tcase_add_test(tc_core, test_config_cpw_get_tag);
     tcase_add_test(tc_core, test_config_cpw_is_closing_tag);
+    tcase_add_test(tc_core, test_config_cpw_is_opening_tag);
     tcase_add_test(tc_core, test_config_cpw_tag_is_arg_allowed);
-    tcase_add_test(tc_core, test_config_cpw_config_validate_configfile);
+    tcase_add_test(tc_core, test_config_cpw_config_validate_configfile_syntax);
+
+    tcase_add_test(tc_core, test_config_cpw_parsecontext_new);
+    tcase_add_test(tc_core, test_config_cpw_parsecontext_init);
+    tcase_add_test(tc_core, test_config_cpw_parsecontext_next_token);
+    tcase_add_test(tc_core, test_config_cpw_parsecontext_add_config_error);
+    tcase_add_test(tc_core, test_config_cpw_parsecontext_done);
     suite_add_tcase(s, tc_core);
     return s;
 }

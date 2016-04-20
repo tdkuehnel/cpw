@@ -8,14 +8,7 @@
 #define CPW_CONFIG_MAX_TAG_LENGTH 64
 #define CPW_CONFIG_TAG_MAX_ARG_ALLOWED 32
 #define CPW_CONFIG_MAX_LINE_TOKEN 5
-
-typedef struct cpwconfig {
-  char *configfile_path;
-  int line_num;
-  
-  cpwcommand *command;
-  int errors;
-} cpwconfig;
+#define CPW_CONFIG_MAX_ERROR_MESSAGE_LENGTH 256
 
 typedef void (*cpw_process_config_func)(void *pointer );
 
@@ -28,11 +21,43 @@ typedef struct cpwconfigtag {
 typedef struct cpwlinetoken {
   /* Actual an array of char * of size MAX_NUM_LINE_TOKEN*/
   char *token[CPW_CONFIG_MAX_LINE_TOKEN];
+  int is_tag;
+  int is_opening_tag;
+  int is_closing_tag;
   int num;
 } cpwlinetoken;
 
-int cpw_config_init(struct cpwcontext *context);
-void cpw_config_parse_configfile(cpwconfig *config);
+typedef struct cpwconfigerror {
+  int line_num;
+  char *error_message;
+  struct cpwconfigerror *next;
+} cpwconfigerror;
+
+typedef struct cpwparsecontext {
+  char *configfile_path;
+  FILE *stream;
+  int in_tag ;
+  int line_num;
+  char line[CPW_CONFIG_MAX_LINE_LENGTH];
+  char current_tag[CPW_CONFIG_MAX_TAG_LENGTH];
+  char closing_tag[CPW_CONFIG_MAX_TAG_LENGTH];
+  cpwlinetoken *linetoken;
+  const char *p;
+  cpwconfigerror *configerror;  
+} cpwparsecontext;
+
+typedef struct cpwconfig {
+  cpwparsecontext *parsecontext;
+  cpwcommand *command;
+} cpwconfig;
+
+cpwparsecontext *cpw_parsecontext_new();
+void cpw_parsecontext_done(cpwparsecontext **pparsecontext);
+
+
+cpwconfig *cpw_config_new();
+int cpw_config_init(struct cpwconfig *config, const char *config_file);
+void cpw_config_parse_configfile(struct cpwcontext *context);
 int cpw_config_validate_configfile(cpwconfig *config);
 
 #endif

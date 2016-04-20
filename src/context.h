@@ -22,7 +22,10 @@ typedef struct cpwcontext {
   struct cpwpipe *globalinputlist;
   struct cpwpipe *globaloutputlist;
 
-}cpwcontext;
+  struct cpwcommand *command;
+  struct cpwprocess *process;
+
+} cpwcontext;
 
 cpwcontext *cpw_context_new();
 void cpw_context_init(cpwcontext *context);

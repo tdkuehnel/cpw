@@ -51,7 +51,7 @@ int teststream_start(cpwpipe *pipe) {
 
   r = cpw_process_create("/home/tdk/bin/ffmpeg", args);
   if (r > 0) {
-    CPW_DEBUG("process created, id: %d\n", r);
+  CPW_LOG_INFO("process created, id: %d\n", r);
     gpid = r;
     return 0;
   } else {
@@ -91,7 +91,10 @@ void cpw_init(int argc, char **argv) {
   cpw_log_init(context->arguments->log_level);
   CPW_LOG_INFO("%s\n", PACKAGE_STRING);
 
-  cpw_config_init(context);
+  /* read in config */
+  cpw_config_init(context->config, context->arguments->config_file);
+  cpw_config_validate(context);
+  cpw_config_parse(context);
 
   /* initialize global pipelists */
   cpw_pipe_init(context);
@@ -199,9 +202,9 @@ int main(int argc, char **argv)
       case EBADF: 
 	CPW_LOG(CPW_LOG_LEVEL_ERROR, "error during pselect: EBADF\n");
 	break;
-	case EINTR: 
-	  CPW_LOG(CPW_LOG_LEVEL_INFO, " signal during pselect: EINTR\n");
-	  break;
+      case EINTR: 
+	CPW_LOG(CPW_LOG_LEVEL_INFO, " signal during pselect: EINTR\n");
+	break;
       case EINVAL: 
 	CPW_LOG(CPW_LOG_LEVEL_ERROR, "error during pselect: EINVAL\n");
 	break;

@@ -1,4 +1,3 @@
-
 #include "context.h"
 
 cpwcontext *cpw_context_new() {
@@ -9,7 +8,7 @@ cpwcontext *cpw_context_new() {
 
 void cpw_context_init(cpwcontext *context) {
   if (context) {
-    context->config = calloc(1, sizeof(cpwconfig));
+    context->config = cpw_config_new();
     context->arguments = calloc(1, sizeof(cpwarguments));    
   } else {
     CPW_LOG_WARNING("Invalid context passed to cpw_context_init\n");

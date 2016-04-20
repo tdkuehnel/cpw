@@ -1,7 +1,7 @@
 TESTS = check_context check_config check_process check_command 
 check_PROGRAMS = check_context check_config check_process check_command
 
-check_context_SOURCES = check_context.c $(top_builddir)/src/context.h ../src/log.c ../src/context.c 
+check_context_SOURCES = check_context.c $(top_builddir)/src/context.h ../src/log.c ../src/context.c ../src/config.c
 check_context_CFLAGS = @CHECK_CFLAGS@
 check_context_LDADD = @CHECK_LIBS@
 
