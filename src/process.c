@@ -19,6 +19,7 @@ cpwprocess *cpw_process_new() {
 
 void cpw_process_init(cpwprocess *process) {
   int i;
+  process->command = NULL;
   process->pid = 0;
   process->source = NULL;
   process->output = NULL;

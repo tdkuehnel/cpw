@@ -22,6 +22,7 @@ typedef struct cpwlinetoken {
   /* Actual an array of char * of size MAX_NUM_LINE_TOKEN*/
   char *token[CPW_CONFIG_MAX_LINE_TOKEN];
   int is_tag;
+  int tag_name_index;
   int is_opening_tag;
   int is_closing_tag;
   int num;
@@ -48,16 +49,20 @@ typedef struct cpwparsecontext {
 
 typedef struct cpwconfig {
   cpwparsecontext *parsecontext;
-  cpwcommand *command;
+  struct cpwcommand *command;
+  struct cpwprocess *process;
 } cpwconfig;
 
 cpwparsecontext *cpw_parsecontext_new();
+int cpw_parsecontext_init(cpwparsecontext *parsecontext, const char* configfile_path);
 void cpw_parsecontext_done(cpwparsecontext **pparsecontext);
-
 
 cpwconfig *cpw_config_new();
 int cpw_config_init(struct cpwconfig *config, const char *config_file);
-void cpw_config_parse_configfile(struct cpwcontext *context);
+int cpw_config_validate(cpwconfig *config);
+int cpw_config_parse(cpwconfig *config);
+
+void cpw_config_parse_configfile(struct cpwconfig *config);
 int cpw_config_validate_configfile(cpwconfig *config);
 
 #endif

@@ -29,6 +29,6 @@ typedef struct cpwcontext {
 
 cpwcontext *cpw_context_new();
 void cpw_context_init(cpwcontext *context);
-void cpw_context_free(cpwcontext *context);
+void cpw_context_free(cpwcontext **context);
 
 #endif

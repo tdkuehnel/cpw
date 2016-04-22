@@ -158,20 +158,29 @@ START_TEST (test_config_cpw_is_tag)
   char line3[CPW_CONFIG_MAX_LINE_LENGTH] = "<Tag Arg>";
   char line4[CPW_CONFIG_MAX_LINE_LENGTH] = "</Tag";
   char line5[CPW_CONFIG_MAX_LINE_LENGTH] = "No Tag";
+  char line6[CPW_CONFIG_MAX_LINE_LENGTH] = "<>";
+  char line7[CPW_CONFIG_MAX_LINE_LENGTH] = "<";
+  char line8[CPW_CONFIG_MAX_LINE_LENGTH] = ">";
   
   char cmd[64];
   const char *p;
 
   p = line1;
-  ck_assert(cpw_is_tag(p) == 0);
+  ck_assert( cpw_is_tag(p) );
   p = line2;
-  ck_assert(cpw_is_tag(p) == 0);
+  ck_assert( cpw_is_tag(p) );
   p = line3;
-  ck_assert(cpw_is_tag(p) == 0);
+  ck_assert( cpw_is_tag(p) );
   p = line4;
-  ck_assert(cpw_is_tag(p) == 0);
+  ck_assert( cpw_is_tag(p) );
   p = line5;
-  ck_assert(cpw_is_tag(p) != 0);
+  ck_assert( ! cpw_is_tag(p) );
+  p = line6;
+  ck_assert( ! cpw_is_tag(p) );
+  p = line7;
+  ck_assert( ! cpw_is_tag(p) );
+  p = line8;
+  ck_assert( ! cpw_is_tag(p) );
 
 }
 END_TEST
@@ -200,6 +209,36 @@ START_TEST (test_config_cpw_get_tag)
     cpw_get_tag(tag, sizeof(tag), &p);
     ck_assert_str_eq(tag, "Tag");
   }
+}
+END_TEST
+
+START_TEST (test_config_cpw_get_tag_name_index)
+{
+  /* unit test code */
+  cpwlinetoken *linetoken;
+  int i;
+  char line1[CPW_CONFIG_MAX_LINE_LENGTH] = "<tag name> arg\0";
+  char line2[CPW_CONFIG_MAX_LINE_LENGTH] = "<tag name > arg\0";
+  char line3[CPW_CONFIG_MAX_LINE_LENGTH] = "<tag> arg\0";
+  
+  linetoken = calloc(1, sizeof(cpwlinetoken));
+  for (i=0; i<CPW_CONFIG_MAX_LINE_TOKEN; i++) {
+    linetoken->token[i] = malloc(CPW_CONFIG_MAX_TAG_LENGTH);
+  }
+  linetoken->is_tag = 1;
+  linetoken->tag_name_index = 0;
+  linetoken->is_opening_tag = 1;
+  linetoken->is_closing_tag = 0;
+
+  cpw_split_line(line1, linetoken); 
+  ck_assert_int_eq( cpw_get_tag_name_index(linetoken), 1); 
+  
+  cpw_split_line(line2, linetoken); 
+  ck_assert_int_eq( cpw_get_tag_name_index(linetoken), 1); 
+  
+  cpw_split_line(line3, linetoken); 
+  ck_assert_int_eq( cpw_get_tag_name_index(linetoken), 0); 
+
 }
 END_TEST
 
@@ -253,6 +292,23 @@ START_TEST (test_config_cpw_parsecontext_init)
   ck_assert( parsecontext->configerror == NULL );
 }
 END_TEST
+
+START_TEST (test_config_cpw_parsecontext_seek_to_tag)
+{
+  /* unit test code */
+  cpwparsecontext *parsecontext;
+
+  parsecontext = cpw_parsecontext_new();
+  ck_assert( cpw_parsecontext_init(parsecontext, "check_seek_to_tag.conf") );
+  
+  printf("config: %s\n", parsecontext->configfile_path);
+  ck_assert( cpw_parsecontext_seek_to_tag(parsecontext, "seektag") );
+  ck_assert_str_eq( parsecontext->linetoken->token[0], "<seektag>");
+
+  cpw_parsecontext_done(&parsecontext);
+}
+END_TEST
+  
 
 START_TEST (test_config_cpw_parsecontext_next_token)
 {
@@ -341,6 +397,8 @@ Suite * config_suite(void)
     tcase_add_test(tc_core, test_config_cpw_split_line);
     tcase_add_test(tc_core, test_config_cpw_get_arg);
     tcase_add_test(tc_core, test_config_cpw_get_tag);
+    tcase_add_test(tc_core, test_config_cpw_is_tag);
+    tcase_add_test(tc_core, test_config_cpw_get_tag_name_index);
     tcase_add_test(tc_core, test_config_cpw_is_closing_tag);
     tcase_add_test(tc_core, test_config_cpw_is_opening_tag);
     tcase_add_test(tc_core, test_config_cpw_tag_is_arg_allowed);
@@ -349,6 +407,7 @@ Suite * config_suite(void)
     tcase_add_test(tc_core, test_config_cpw_parsecontext_new);
     tcase_add_test(tc_core, test_config_cpw_parsecontext_init);
     tcase_add_test(tc_core, test_config_cpw_parsecontext_next_token);
+    tcase_add_test(tc_core, test_config_cpw_parsecontext_seek_to_tag);
     tcase_add_test(tc_core, test_config_cpw_parsecontext_add_config_error);
     tcase_add_test(tc_core, test_config_cpw_parsecontext_done);
     suite_add_tcase(s, tc_core);

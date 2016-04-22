@@ -15,11 +15,19 @@ void cpw_context_init(cpwcontext *context) {
   }
 }
 
-void cpw_context_free(cpwcontext *context) {
-  if (context) {
-    if (context->config) free(context->config);
-    if (context->arguments) free(context->arguments);
-  }
-  free(context);
+void cpw_context_free(cpwcontext **pcontext) {
+  cpwcontext *context;
+  if (pcontext) {
+    context = *pcontext;
+    if (context) {
+      context = *pcontext;
+      if (context->config) free(context->config);
+      if (context->arguments) free(context->arguments);
+      free(context);
+      *pcontext = NULL;
+    } else
+      CPW_LOG_ERROR("Invalid context\n");
+  } else 
+    CPW_LOG_ERROR("Invalid argument (*context)\n");
 }
 

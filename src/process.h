@@ -37,6 +37,7 @@ typedef struct cpwjob {
 
 typedef struct cpwprocess {
   struct cpwprocess *next, *prev;
+  cpwcommand *command;
   const char *args[CPW_PROCESS_MAX_ARGS];
   char arg[CPW_PROCESS_ARG_LEN + 1];
   int pid;

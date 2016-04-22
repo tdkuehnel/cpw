@@ -6,7 +6,7 @@
 #include "utlist.h"
 #include "context.h"
 
-#define DEBUG 1
+#define DEBUG 0
 #define DEBUG_DEEP 0
 #include "debug.h"
 
@@ -21,9 +21,9 @@ const char *tags[] = {
 };
 
 cpwconfigtag configtags[] = {
-  {"Command", {"arg", "arg2", "arg4", NULL}},
-  {"Process", {"arg", "arg2", "arg4", NULL}},
-  {"Job",{NULL}},
+  {"Command", {"name", "path", "arg",  NULL}},
+  {"Process", {"name", "Command", "arg", "immediate", NULL}},
+  {"Job", {"name", NULL}}
 };
 
 int cpw_is_space(int c) {
@@ -31,9 +31,9 @@ int cpw_is_space(int c) {
 }
 
 int cpw_is_tag(const char *tag) {
-  if ( *tag == '<' ) 
+  if ( *tag == '<' && tag[1] != '>' && tag[1] != '\0' && tag[1] != ' ') 
     return 1;
-  else
+  else 
     return 0;
 }
 
@@ -109,7 +109,7 @@ int cpw_tag_is_arg_allowed( cpwconfigtag *configtags, int array_size, const char
     CPW_LOG_ERROR("searching for unknown tag <%s> in known tags\n", tag);
     return 0;
   }
-
+  
   CPW_DEBUG("scanning allowed args\n");
   found = 0;
   i = 0;
@@ -124,6 +124,9 @@ int cpw_tag_is_arg_allowed( cpwconfigtag *configtags, int array_size, const char
   return found;
 }
 
+#undef DEBUG 
+#define DEBUG 0
+
 void cpw_split_line( const char *line, cpwlinetoken *linetoken) {
   const char *p;
   int i;
@@ -133,6 +136,9 @@ void cpw_split_line( const char *line, cpwlinetoken *linetoken) {
 
   CPW_DEBUG("\n  split line: %s", line);
 
+  for ( i=0; i<CPW_CONFIG_MAX_LINE_TOKEN; i++ ) {
+    *linetoken->token[i] = '\0';
+  }
   for ( i=0; i<CPW_CONFIG_MAX_LINE_TOKEN; i++ ) {
     while (cpw_is_space(*p))
       p++;
@@ -146,6 +152,44 @@ void cpw_split_line( const char *line, cpwlinetoken *linetoken) {
   }
 }
 
+#undef DEBUG 
+#define DEBUG 0
+
+int cpw_get_tag_name_index(cpwlinetoken *linetoken) {
+  int i = 0;
+  int j = 0;
+  int found = 0;
+  
+  if ( linetoken ) {
+    if ( linetoken->is_opening_tag ) {
+      while ( *linetoken->token[i] != '\0' && i < CPW_CONFIG_MAX_LINE_TOKEN ) {
+	CPW_DEBUG("scanning token '%s' for '>' \n", linetoken->token[i]);
+	j = 0;
+	while ( linetoken->token[i][j] != '\0' ) {
+	  if ( linetoken->token[i][j] == '>' ) {
+	    CPW_DEBUG("   found token '>' in '%s' \n", linetoken->token[i]);
+	    if ( j == 0 && i >= 2 ) 
+	      i--;
+	    return i;
+	  }
+	  j++;
+	} 
+	i++;
+      }
+    } else {
+      CPW_LOG_ERROR("invalid linetoken argument\n");
+      return 0;
+    }
+  } else {
+    CPW_LOG_ERROR("invalid linetoken argument\n");
+    return 0;
+  }
+  return i;
+}
+
+#undef DEBUG 
+#define DEBUG 0
+
 cpwparsecontext *cpw_parsecontext_new() {
   cpwparsecontext *parsecontext;
 
@@ -158,7 +202,7 @@ cpwparsecontext *cpw_parsecontext_new() {
   return parsecontext;
 }
 
-void cpw_parsecontext_init(cpwparsecontext *parsecontext, const char* configfile_path) {
+int cpw_parsecontext_init(cpwparsecontext *parsecontext, const char* configfile_path) {
   int i;
 
   if ( parsecontext ) {
@@ -174,22 +218,61 @@ void cpw_parsecontext_init(cpwparsecontext *parsecontext, const char* configfile
 	    parsecontext->linetoken->token[i] = malloc(CPW_CONFIG_MAX_TAG_LENGTH);
 	  }
 	  parsecontext->linetoken->is_tag = 0;
+	  parsecontext->linetoken->tag_name_index = 0;
 	  parsecontext->linetoken->is_opening_tag = 0;
 	  parsecontext->linetoken->is_closing_tag = 0;
 	} else {
 	  CPW_LOG_ERROR("no mem for cpwlinetoken\n");
+	  return 0;
 	}
 	parsecontext->configerror = NULL;
       } else {
 	CPW_LOG_ERROR( "Could not open the configuration file '%s'\n", configfile_path);
+	return 0;
       }    
     } else {
       CPW_LOG_ERROR("no mem for configfile_path\n");
+      return 0;
     }
   } else {
     CPW_LOG_ERROR("Invalid parsecontext\n");
+    return 0;
   }
+  return 1;
 }
+
+#undef DEBUG 
+#define DEBUG 0
+
+int cpw_parsecontext_seek_to_tag(cpwparsecontext *parsecontext, const char *tag) {
+  int found = 0;
+
+  if ( parsecontext ) {
+    while ( cpw_parsecontext_next_token(parsecontext) ) {
+      CPW_DEBUG("linetoken[0]: '%s'\n", parsecontext->linetoken->token[0]);
+      if ( parsecontext->linetoken->is_tag && parsecontext->linetoken->is_opening_tag ) {
+	cpw_get_tag(parsecontext->current_tag, CPW_CONFIG_MAX_TAG_LENGTH, &parsecontext->linetoken->token[0]);
+	if ( strcasecmp(parsecontext->current_tag, tag) == 0  ) {
+	  found = 1;
+	  break;
+	}
+      } else {
+	continue;
+      }
+    }
+  } else {
+    CPW_LOG_ERROR("Invalid parsecontext\n");
+    return 0;
+  }
+  if (found)
+    CPW_DEBUG("seek to token: %s\n", tag); 
+  else
+    CPW_DEBUG("unable to seek to token: %s\n", tag);   
+  return found;
+}
+
+#undef DEBUG
+#define DEBUG 0
 
 int cpw_parsecontext_next_token(cpwparsecontext *parsecontext) {
   char tag[CPW_CONFIG_MAX_TAG_LENGTH];
@@ -204,27 +287,31 @@ int cpw_parsecontext_next_token(cpwparsecontext *parsecontext) {
         continue;
       token_found = 1;
       cpw_split_line(parsecontext->p, parsecontext->linetoken);
-      CPW_NO_DEBUG("linetoken[0]: '%s'\n", parsecontext->linetoken->token[0]);
-      CPW_NO_DEBUG("linetoken[1]: '%s'\n", parsecontext->linetoken->token[1]);
-      CPW_NO_DEBUG("linetoken[2]: '%s'\n", parsecontext->linetoken->token[2]);
+      CPW_DEBUG("linetoken[0]: '%s'\n", parsecontext->linetoken->token[0]);
+      CPW_DEBUG("linetoken[1]: '%s'\n", parsecontext->linetoken->token[1]);
+      CPW_DEBUG("linetoken[2]: '%s'\n", parsecontext->linetoken->token[2]);
       if ( cpw_is_tag(parsecontext->linetoken->token[0]) ) { 
 	parsecontext->linetoken->is_tag = 1;
 	if ( cpw_is_opening_tag(parsecontext->linetoken->token[0]) ) {
 	  parsecontext->linetoken->is_closing_tag = 0;
 	  parsecontext->linetoken->is_opening_tag = 1;
+	  parsecontext->linetoken->tag_name_index = cpw_get_tag_name_index(parsecontext->linetoken);
+	  CPW_DEBUG("tag_name_index: %d\n", parsecontext->linetoken->tag_name_index);
 	}
 	if ( cpw_is_closing_tag(parsecontext->linetoken->token[0]) ) {
 	  parsecontext->linetoken->is_closing_tag = 1;
 	  parsecontext->linetoken->is_opening_tag = 0;
+	  parsecontext->linetoken->tag_name_index = 0;
 	}
       } else {
 	parsecontext->linetoken->is_tag = 0;
 	parsecontext->linetoken->is_opening_tag = 0;
 	parsecontext->linetoken->is_closing_tag = 0;
+	parsecontext->linetoken->tag_name_index = 0;
       }
-      CPW_NO_DEBUG("linetoken->is_tag: '%d'\n", parsecontext->linetoken->is_tag);
-      CPW_NO_DEBUG("linetoken->is_opening_tag: '%d'\n", parsecontext->linetoken->is_opening_tag);
-      CPW_NO_DEBUG("linetoken->is_closing_tag: '%d'\n", parsecontext->linetoken->is_closing_tag);
+      CPW_DEBUG_DEEP("linetoken->is_tag: '%d'\n", parsecontext->linetoken->is_tag);
+      CPW_DEBUG_DEEP("linetoken->is_opening_tag: '%d'\n", parsecontext->linetoken->is_opening_tag);
+      CPW_DEBUG_DEEP("linetoken->is_closing_tag: '%d'\n", parsecontext->linetoken->is_closing_tag);
       break;
     }
   } else {
@@ -311,6 +398,37 @@ void cpw_parsecontext_done(cpwparsecontext **pparsecontext) {
   }  
 }
 
+#undef DEBUG 
+#define DEBUG 1
+
+int cpw_config_validate_configfile_logic(cpwparsecontext *parsecontext) {
+  cpwcommand *command = NULL;
+  
+  CPW_LOG_INFO("Validating config file logic %s ...\n", parsecontext->configfile_path);
+
+  rewind(parsecontext->stream);  
+  while ( cpw_parsecontext_seek_to_tag(parsecontext, "Command") ) {
+    CPW_DEBUG("found tag Command at line: %d\n", parsecontext->line_num);    
+    command = cpw_command_new();
+    if ( parsecontext->linetoken->tag_name_index ) {
+      cpw_command_set_value(command, "name", parsecontext->linetoken->token[parsecontext->linetoken->tag_name_index]);      
+    }
+    while ( cpw_parsecontext_next_token(parsecontext) && ! parsecontext->linetoken->is_tag ) {
+      cpw_command_set_value(command, parsecontext->linetoken->token[0], parsecontext->linetoken->token[1]);
+      CPW_DEBUG("Command %s: setting '%s' to value '%s'\n", command->name, parsecontext->linetoken->token[0], parsecontext->linetoken->token[1]);    
+    }
+  }
+  rewind(parsecontext->stream);
+  while ( cpw_parsecontext_seek_to_tag(parsecontext, "Process") ) {
+    CPW_DEBUG("found tag Process at line: %d\n", parsecontext->line_num);    
+    
+  }
+  return 1;
+}
+
+#undef DEBUG 
+#define DEBUG 0
+
 int cpw_config_validate_configfile_syntax(cpwparsecontext *parsecontext) {
   
   CPW_LOG_INFO("Validating config file syntax %s ...\n", parsecontext->configfile_path);
@@ -368,28 +486,35 @@ int cpw_config_validate_configfile_syntax(cpwparsecontext *parsecontext) {
 cpwcommand *cpw_config_parse_config_for_command(cpwconfig *config) {
 }
 
-void cpw_config_parse_configfile(cpwcontext *context) {
+void cpw_config_parse_configfile(cpwconfig *config) {
   cpwcommand *command;
-  if ( context ) {
-    command = cpw_config_parse_config_for_command(context->config);
+  if ( config) {
+    command = cpw_config_parse_config_for_command(config);
   } else {
     CPW_LOG_ERROR("Invalid context argument\n");
   }
 }
 
-int cpw_config_parse(cpwcontext *context) {
-  cpw_config_parse_configfile(context);
+int cpw_config_parse(cpwconfig *config) {
+  cpw_config_parse_configfile(config);
 }
 
-int cpw_config_validate(cpwcontext *context) {
-  if ( cpw_config_validate_configfile_syntax(context->config->parsecontext) ) {
+int cpw_config_validate(cpwconfig *config) {
+  if ( cpw_config_validate_configfile_syntax(config->parsecontext) ) {
     CPW_LOG_INFO("configfile syntax looks OK\n");
-    return 1;
+    if ( cpw_config_validate_configfile_logic(config->parsecontext) ) {
+      CPW_LOG_INFO("configfile logic looks OK\n");
+    } else {
+      CPW_LOG_ERROR("Invalid config file logic: %s\n", config->parsecontext->configfile_path);
+      cpw_parsecontext_print_config_error(config->parsecontext);
+      return 0;
+    }
   } else {
-    CPW_LOG_ERROR("Invalid config file syntax: %s\n", context->config->parsecontext->configfile_path);
-    cpw_parsecontext_print_config_error(context->config->parsecontext);
+    CPW_LOG_ERROR("Invalid config file syntax: %s\n", config->parsecontext->configfile_path);
+    cpw_parsecontext_print_config_error(config->parsecontext);
     return 0;
   }
+  return 1;
 }
 
 cpwconfig *cpw_config_new() {
@@ -407,6 +532,8 @@ int cpw_config_init(cpwconfig *config, const char *config_file) {
   if ( config ) {
     config->parsecontext = cpw_parsecontext_new();
     cpw_parsecontext_init(config->parsecontext, config_file);    
+    config->command = NULL;
+    config->process = NULL;
   } else {
     CPW_LOG_ERROR("Invalid cpwconfig\n");
     return 0;

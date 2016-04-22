@@ -26,40 +26,6 @@ int r;
 char *buf;
 int gpid;
 
-int teststream_start(cpwpipe *pipe) {
-  char *args[CPW_PROCESS_MAX_ARGS];
-  char arg[CPW_PROCESS_ARG_LEN + 1];
-  int i, r;
-
-  args[0] = strndup("ffmpeg", CPW_PROCESS_ARG_LEN - 1 );
-  args[1] = strdup("-y");
-  args[2] = strdup("-f");
-  args[3] = strdup("lavfi");
-  args[4] = strdup("-i");
-  args[5] = strndup("testsrc=:size=320x240", CPW_PROCESS_ARG_LEN - 1 );
-  args[6] = strdup("-f");
-  args[7] = strdup("rawvideo");
-  args[8] = strdup("-pix_fmt");
-  args[9] = strdup("rgb24");
-  args[10] = strdup("-video_size");
-  args[11] = strdup("320x240");
-  args[12] = pipe->name;
-  args[13] = NULL;
-  CPW_DEBUG("ffmpeg args: %s %s %s %s %s %s %s %s %s %s %s %s %s\n", \
-	 args[0], args[1], args[2], args[3], args[4], args[5],		\
-	 args[6], args[7], args[8], args[9], args[10], args[11], args[12]);
-
-  r = cpw_process_create("/home/tdk/bin/ffmpeg", args);
-  if (r > 0) {
-  CPW_LOG_INFO("process created, id: %d\n", r);
-    gpid = r;
-    return 0;
-  } else {
-    CPW_DEBUG("create process failed\n");
-    return -1;
-  }
-}
-
 void sig_handler(int signum) {
   count++;
   last_signum = signum;
@@ -86,15 +52,15 @@ void cpw_init(int argc, char **argv) {
   /* initialize global pipelists */
   context = cpw_context_new();
   cpw_context_init(context);
-
+  
   cpw_arg_parse(context->arguments, argc, argv);
   cpw_log_init(context->arguments->log_level);
   CPW_LOG_INFO("%s\n", PACKAGE_STRING);
 
   /* read in config */
   cpw_config_init(context->config, context->arguments->config_file);
-  cpw_config_validate(context);
-  cpw_config_parse(context);
+  cpw_config_validate(context->config);
+  cpw_config_parse(context->config);
 
   /* initialize global pipelists */
   cpw_pipe_init(context);
@@ -230,7 +196,7 @@ int main(int argc, char **argv)
   CPW_LOG(CPW_LOG_LEVEL_INFO, "%d signals handled\n", count);
   kill(gpid, SIGTERM);
 
-  cpw_context_free(context);
+  cpw_context_free(&context);
   CPW_LOG(CPW_LOG_LEVEL_INFO, "done\n");
   cpw_log_done();
   
