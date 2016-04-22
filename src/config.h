@@ -5,9 +5,7 @@
 #include "context.h"
 
 #define CPW_CONFIG_MAX_LINE_LENGTH 1024
-#define CPW_CONFIG_MAX_TAG_LENGTH 64
 #define CPW_CONFIG_TAG_MAX_ARG_ALLOWED 32
-#define CPW_CONFIG_MAX_LINE_TOKEN 5
 #define CPW_CONFIG_MAX_ERROR_MESSAGE_LENGTH 256
 
 typedef void (*cpw_process_config_func)(void *pointer );
@@ -17,16 +15,6 @@ typedef struct cpwconfigtag {
   const char *argsallowed[CPW_CONFIG_TAG_MAX_ARG_ALLOWED];
   cpw_process_config_func *func;
 } cpwconfigtag;
-
-typedef struct cpwlinetoken {
-  /* Actual an array of char * of size MAX_NUM_LINE_TOKEN*/
-  char *token[CPW_CONFIG_MAX_LINE_TOKEN];
-  int is_tag;
-  int tag_name_index;
-  int is_opening_tag;
-  int is_closing_tag;
-  int num;
-} cpwlinetoken;
 
 typedef struct cpwconfigerror {
   int line_num;

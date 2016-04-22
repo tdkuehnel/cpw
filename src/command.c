@@ -14,39 +14,6 @@
 #undef DEBUG
 #define DEBUG 0
 
-int cpw_find_token(const char* line, const char* token, int index) {
-  const char *p, *q, *l;
-  int i = 0;
-
-  if ( line && token ) {
-    CPW_DEBUG("line: '%s', token: '%s'\n", line, token);
-    l = line;
-    while (*l != '\0' ) {
-      p = l;
-      q = token;
-      while ( *p == *q && *p != '\0' ) {
-	CPW_DEBUG("%s \n", q);
-	p++;
-	q++;
-      }
-      if ( *q == '\0' ) {
-	if ( i == index ) 
-	  return l - line;
-	else
-	  i++;
-      }
-      l++;
-    }
-    return -1;
-  } else {
-    CPW_LOG_ERROR("invalid argument(s)\n");
-  } 
-  return -1;
-}
-
-#undef DEBUG
-#define DEBUG 0
-
 cpwcommandargindex *cpw_commandargindex_new(int index) {
   cpwcommandargindex *commandargindex;
 

@@ -14,6 +14,8 @@
 #define DEBUG 0
 #endif
 
+#include <stdio.h>
+
 #define CPW_DEBUG(...) \
   do { if (DEBUG) fprintf(stderr, ## __VA_ARGS__); } while (0)
 

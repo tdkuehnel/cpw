@@ -29,5 +29,6 @@ check_command
 check_config
 check_context
 check_process
+check_helper
 .dirstamp
 .deps

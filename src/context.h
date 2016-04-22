@@ -5,6 +5,7 @@
 
 struct cpwcontext;
 
+#include "helper.h"
 #include "command.h"
 #include "process.h"
 #include "pipe.h"
