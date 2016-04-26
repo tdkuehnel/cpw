@@ -24,6 +24,7 @@ static struct argp_option options[] = {
   {"quiet",       'q', 0,      0,            "Don't produce any output" },
   {"silent",      's', 0,      OPTION_ALIAS },
   {"configfile",  'f', "FILE", 0,            "Use configfile instead of ..." },
+  {"checkconfig", 'c', 0,      0,            "Check only configfile syntax and logic, then exit"},
   {"loglevel",    'l', "LEVEL",0,            "Set log level (0 .. 8), default 1" },
   { 0 }
 };
@@ -43,6 +44,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
       break;
     case 'v':
       arguments->verbose = 1;
+      break;
+    case 'c':
+      arguments->check_config_only = 1;
       break;
     case 'f':
       arguments->config_file = arg;
@@ -80,6 +84,7 @@ void cpw_arg_parse(cpwarguments *arguments, int argc, char **argv) {
   /* FIXME: take cpw.conf path from configure values */
   arguments->config_file = "/etc/cpw.conf";
   arguments->log_level = CPW_LOG_LEVEL_DEFAULT;
+  arguments->check_config_only = 0;
 
   CPW_DEBUG ("OUTPUT_FILE = %s\n"
 		"VERBOSE = %s\nSILENT = %s\nLOG_LEVEL = %d\n\n",

@@ -8,6 +8,7 @@ typedef struct cpwarguments
   int silent, verbose;
   char *config_file;
   int log_level;
+  int check_config_only;
 } cpwarguments;
 
 void cpw_arg_parse(cpwarguments *arguments, int argc, char **argv);

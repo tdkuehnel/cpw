@@ -118,7 +118,9 @@ int cpw_parsecontext_seek_to_tag(cpwparsecontext *parsecontext, const char *tag)
     while ( cpw_parsecontext_next_token(parsecontext) ) {
       CPW_DEBUG("linetoken[0]: '%s'\n", parsecontext->linetoken->token[0]);
       if ( parsecontext->linetoken->is_tag && parsecontext->linetoken->is_opening_tag ) {
+	CPW_DEBUG("before cpw_get_tag: parsecontext->linetoken->token[0]: '%p'\n", parsecontext->linetoken->token[0]);
 	cpw_get_tag(parsecontext->current_tag, CPW_CONFIG_MAX_TAG_LENGTH, &parsecontext->linetoken->token[0]);
+	CPW_DEBUG(" after cpw_get_tag: parsecontext->linetoken->token[0]: '%p'\n", parsecontext->linetoken->token[0]);
 	if ( strcasecmp(parsecontext->current_tag, tag) == 0  ) {
 	  found = 1;
 	  break;
@@ -266,31 +268,67 @@ void cpw_parsecontext_done(cpwparsecontext **pparsecontext) {
 }
 
 #undef DEBUG 
-#define DEBUG 1
+#define DEBUG 0
 
 int cpw_config_validate_configfile_logic(cpwparsecontext *parsecontext) {
+  cpwcommand *commandlist = NULL;
+  cpwprocess *processlist = NULL;
   cpwcommand *command = NULL;
-  
+  cpwprocess *process = NULL;
+  char name[CPW_CONFIG_MAX_TAG_LENGTH];
+
   CPW_LOG_INFO("Validating config file logic %s ...\n", parsecontext->configfile_path);
 
   rewind(parsecontext->stream);  
   while ( cpw_parsecontext_seek_to_tag(parsecontext, "Command") ) {
-    CPW_DEBUG("found tag Command at line: %d\n", parsecontext->line_num);    
+    CPW_DEBUG("found tag 'Command' at line: %d\n", parsecontext->line_num);    
     command = cpw_command_new();
     if ( parsecontext->linetoken->tag_name_index ) {
+      cpw_get_tag(name, CPW_CONFIG_MAX_TAG_LENGTH, &parsecontext->linetoken->token[parsecontext->linetoken->tag_name_index]);
+      if ( cpw_command_find_by_name(commandlist, name) ) {
+   	cpw_parsecontext_add_config_error(parsecontext, "invalid logic: Command with name '%s' already defined", name);	   
+      }
       cpw_command_set_value(command, "name", parsecontext->linetoken->token[parsecontext->linetoken->tag_name_index]);      
+      CPW_DEBUG("Command   : setting name to value '%s'\n", parsecontext->linetoken->token[parsecontext->linetoken->tag_name_index]);    
     }
     while ( cpw_parsecontext_next_token(parsecontext) && ! parsecontext->linetoken->is_tag ) {
       cpw_command_set_value(command, parsecontext->linetoken->token[0], parsecontext->linetoken->token[1]);
       CPW_DEBUG("Command %s: setting '%s' to value '%s'\n", command->name, parsecontext->linetoken->token[0], parsecontext->linetoken->token[1]);    
     }
+    CPW_DEBUG("end of while loop for tag: '%s'. now parsecontext->linetoken: '%s'\n", parsecontext->current_tag, parsecontext->linetoken->token[0]);
+    CPW_DEBUG("parsecontext->closing_tag = '%s'\n", parsecontext->closing_tag);
+    if ( parsecontext->linetoken->is_closing_tag ) {
+      cpw_get_tag(parsecontext->closing_tag, CPW_CONFIG_MAX_TAG_LENGTH, &parsecontext->linetoken->token[0]);
+      CPW_DEBUG("parsecontext->closing_tag = '%s'\n", parsecontext->closing_tag);
+      if ( strcasecmp(parsecontext->closing_tag, parsecontext->current_tag) != 0 ) 
+	/* should never happen after a syntax check has run on the file, but who knows */ 
+	cpw_parsecontext_add_config_error(parsecontext, "closing tag mismatch: '<%s>' <> '%s'", 
+					  parsecontext->current_tag, parsecontext->linetoken->token[0]);	  
+    }
+    LL_APPEND(commandlist, command);
   }
   rewind(parsecontext->stream);
   while ( cpw_parsecontext_seek_to_tag(parsecontext, "Process") ) {
     CPW_DEBUG("found tag Process at line: %d\n", parsecontext->line_num);    
-    
+    process = cpw_process_new();
+    if ( parsecontext->linetoken->tag_name_index ) {
+      cpw_process_set_value(process, "name", parsecontext->linetoken->token[parsecontext->linetoken->tag_name_index], NULL);      
+      CPW_DEBUG("Process   : setting name to value '%s'\n", parsecontext->linetoken->token[parsecontext->linetoken->tag_name_index]);    
+    }
+    while ( cpw_parsecontext_next_token(parsecontext) && ! parsecontext->linetoken->is_tag ) {
+      CPW_DEBUG("Process %s: setting '%s' to value '%s'\n", process->name, parsecontext->linetoken->token[0], parsecontext->linetoken->token[1]);    
+      if (! cpw_process_set_value(process, parsecontext->linetoken->token[0], parsecontext->linetoken->token[1], commandlist) ) {
+	CPW_DEBUG("Process %s: unable to set '%s' to value '%s'\n", process->name, parsecontext->linetoken->token[0], parsecontext->linetoken->token[1]);
+   	cpw_parsecontext_add_config_error(parsecontext, "invalid logic: in Process '%s': '<%s>' not a valid command name (no command with this name)",  
+					  process->name, parsecontext->linetoken->token[1]);	   
+      }
+    }
+    LL_APPEND(processlist, process);    
   }
-  return 1;
+  if ( parsecontext->configerror )
+    return 0;
+  else
+    return 1;
 }
 
 #undef DEBUG 
@@ -308,6 +346,7 @@ int cpw_config_validate_configfile_syntax(cpwparsecontext *parsecontext) {
 	if ( parsecontext->in_tag ) {	      
 	  cpw_parsecontext_add_config_error(parsecontext, "tag '%s' in tag '<%s>', closing tag missing", 
 					    parsecontext->linetoken->token[0], parsecontext->current_tag);	  
+	  cpw_get_tag(parsecontext->current_tag, CPW_CONFIG_MAX_TAG_LENGTH, &parsecontext->linetoken->token[0]);
 	} else {
 	  parsecontext->in_tag = 1;
 	  cpw_get_tag(parsecontext->current_tag, CPW_CONFIG_MAX_TAG_LENGTH, &parsecontext->linetoken->token[0]);
@@ -324,6 +363,7 @@ int cpw_config_validate_configfile_syntax(cpwparsecontext *parsecontext) {
 	    parsecontext->in_tag = 0;
 	    *parsecontext->current_tag = '\0';
 	  } else {
+	    CPW_DEBUG("unknown closing tag '%s' for: <%s>\n",parsecontext->closing_tag,  parsecontext->current_tag);
 	    cpw_parsecontext_add_config_error(parsecontext, "closing tag mismatch: '<%s>' <> '%s'", 
 					      parsecontext->current_tag, parsecontext->linetoken->token[0]);	  
 	  }
@@ -349,6 +389,10 @@ int cpw_config_validate_configfile_syntax(cpwparsecontext *parsecontext) {
   else
     return 1;
 }  
+
+void cpw_config_printout(cpwconfig *config) {
+  CPW_LOG_INFO("current configuration: \n");
+}
 
 cpwcommand *cpw_config_parse_config_for_command(cpwconfig *config) {
 }
@@ -397,10 +441,13 @@ cpwconfig *cpw_config_new() {
 
 int cpw_config_init(cpwconfig *config, const char *config_file) {
   if ( config ) {
-    config->parsecontext = cpw_parsecontext_new();
-    cpw_parsecontext_init(config->parsecontext, config_file);    
     config->command = NULL;
     config->process = NULL;
+    config->parsecontext = cpw_parsecontext_new();
+    if (! cpw_parsecontext_init(config->parsecontext, config_file) ) {
+      CPW_LOG_ERROR("unable to initialize parse context\n");
+      return 0;
+    }        
   } else {
     CPW_LOG_ERROR("Invalid cpwconfig\n");
     return 0;

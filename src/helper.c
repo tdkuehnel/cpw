@@ -87,7 +87,8 @@ void cpw_get_tag(char *buf, int buf_size, char **pp) {
 	*q++ = *p;
       p++;
     }
-  }    
+  }
+  *q = '\0';
 }
 
 #undef DEBUG

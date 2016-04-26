@@ -49,7 +49,7 @@ cpwconfig *cpw_config_new();
 int cpw_config_init(struct cpwconfig *config, const char *config_file);
 int cpw_config_validate(cpwconfig *config);
 int cpw_config_parse(cpwconfig *config);
-
+void cpw_config_printout(cpwconfig *config);
 void cpw_config_parse_configfile(struct cpwconfig *config);
 int cpw_config_validate_configfile(cpwconfig *config);
 

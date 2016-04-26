@@ -57,14 +57,6 @@ void cpw_init(int argc, char **argv) {
   cpw_log_init(context->arguments->log_level);
   CPW_LOG_INFO("%s\n", PACKAGE_STRING);
 
-  /* read in config */
-  cpw_config_init(context->config, context->arguments->config_file);
-  cpw_config_validate(context->config);
-  cpw_config_parse(context->config);
-
-  /* initialize global pipelists */
-  cpw_pipe_init(context);
-
   /* main initialization ends here */
 }
 
@@ -75,6 +67,37 @@ int main(int argc, char **argv)
   sigset_t sigmask;
 
   cpw_init(argc, argv);
+
+  if ( context->arguments->check_config_only ) {
+    if ( cpw_config_init(context->config, context->arguments->config_file) ) {
+      if ( cpw_config_validate(context->config) ) {
+	cpw_config_printout(context->config);
+	exit(EXIT_SUCCESS);
+      } else {
+	CPW_LOG_ERROR("error validating config file\n");
+	exit(EXIT_FAILURE);      
+      }
+    } else {
+      CPW_LOG_ERROR("error initializing configuration\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+  
+  /* read in config */
+  if ( cpw_config_init(context->config, context->arguments->config_file) ) {
+    if ( cpw_config_validate(context->config) ) {
+      cpw_config_parse(context->config);
+    } else {
+      CPW_LOG_ERROR("error validating config file\n");
+      exit(EXIT_FAILURE);      
+    }
+  } else {
+    CPW_LOG_ERROR("error initializing configuration\n");
+    exit(EXIT_FAILURE);
+  }
+
+  /* initialize global pipelists */
+  cpw_pipe_init(context);
 
   /* create test pipeline */
   inpipe = cpw_pipe_create_with_buflist("input01", PIPE_INPUT);

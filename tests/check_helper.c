@@ -7,6 +7,31 @@
 
 #define NELEMS(x)  (sizeof(x) / sizeof((x)[0]))
 
+START_TEST (test_helper_cpw_find_token)
+{                                      /*             1    1    2    2  */
+  /* unit test code */                 /*   0    5    0    5    0    5  */
+  char line1[CPW_COMMAND_MAX_ARG_LENGTH] = "      arg    -i <input> -o <output> -x y\n";
+  char line2[CPW_COMMAND_MAX_ARG_LENGTH] = "      arg    -i <input > -o output -x y\n";
+  char line3[CPW_COMMAND_MAX_ARG_LENGTH] = "      arg    -i <input>";
+  char line4[CPW_COMMAND_MAX_ARG_LENGTH] = "      arg    -i <inp";
+  char line5[CPW_COMMAND_MAX_ARG_LENGTH] = "<input>";
+  char line6[CPW_COMMAND_MAX_ARG_LENGTH] = "input>";
+  char line7[CPW_COMMAND_MAX_ARG_LENGTH] = "   arg   <input>    org <input>";
+
+  ck_assert_int_eq(cpw_find_token(line1, "<input>", 0), 16); 
+  ck_assert_int_eq(cpw_find_token(line1, "<output>", 0), 27); 
+  ck_assert_int_eq(cpw_find_token(line2, "<input>", 0), -1);  
+  ck_assert_int_eq(cpw_find_token(line2, "<output>", 0), -1);  
+  ck_assert_int_eq(cpw_find_token(line3, "<input>", 0), 16);  
+  ck_assert_int_eq(cpw_find_token(line4, "<input>", 0), -1);  
+  ck_assert_int_eq(cpw_find_token(line5, "<input>", 0), 0);  
+  ck_assert_int_eq(cpw_find_token(line6, "<input>", 0), -1);  
+  ck_assert_int_eq(cpw_find_token(line7, "<input>", 0), 9);  
+  ck_assert_int_eq(cpw_find_token(line7, "<input>", 1), 24);  
+  ck_assert_int_eq(cpw_find_token(line7, "<input>", 2), -1);  
+}
+END_TEST
+
 START_TEST (test_helper_cpw_is_tag)
 {
   /* unit test code */
@@ -110,14 +135,16 @@ START_TEST (test_helper_cpw_get_tag)
  
   char cmd[64];
   char tag[64];
-  const char *p;
+  const char *p, *q;;
 
+  q = cmd;
   for ( i = 0; i < NELEMS(lines); i++ ) {
     p = lines[i];
     cpw_get_arg(cmd, sizeof(cmd), &p);
     p = cmd;
     cpw_get_tag(tag, sizeof(tag), &p);
     ck_assert_str_eq(tag, "Tag");
+    ck_assert( q == cmd ); 
   }
 }
 END_TEST
@@ -213,6 +240,7 @@ Suite * helper_suite(void)
     /* Core test case */
     tc_core = tcase_create("Core");
 
+    tcase_add_test(tc_core, test_helper_cpw_find_token);
     tcase_add_test(tc_core, test_helper_cpw_is_tag);
     tcase_add_test(tc_core, test_helper_cpw_is_opening_tag);
     tcase_add_test(tc_core, test_helper_cpw_is_closing_tag);

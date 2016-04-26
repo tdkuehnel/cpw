@@ -22,9 +22,10 @@ START_TEST (test_cpw_process_add_arg)
 
   process = cpw_process_new();
    
-  ck_assert(cpw_process_add_arg(process, "-y") == 0);
-  ck_assert_str_eq(process->args[0], "-y");
-  ck_assert(cpw_process_add_arg(process, "-f lavfi") == 0);
+  ck_assert(cpw_process_add_arg(process, "-y"));
+  ck_assert_str_eq( process->args->arg, "-y");
+  ck_assert(cpw_process_add_arg(process, "-f lavfi"));
+  ck_assert_str_eq( process->args->next->arg, "-f lavfi");
 }
 END_TEST
 
@@ -34,8 +35,27 @@ START_TEST (test_cpw_process_set_value)
   cpwprocess *process;
 
   process = cpw_process_new();
-  ck_assert(cpw_process_set_value(process, "arg", "-y") == 0);
-  ck_assert(cpw_process_set_value(process, "badarg", "-y") != 0);
+  ck_assert(cpw_process_set_value(process, "arg", "-y", NULL));
+  ck_assert(!cpw_process_set_value(process, "badarg", "-y", NULL));
+}
+END_TEST
+
+START_TEST (test_cpw_process_free)
+{
+  /* unit test code */
+  cpwprocess *process;
+
+  process = cpw_process_new();
+  ck_assert(process != NULL);
+  
+  cpw_process_init(process);
+
+  ck_assert( cpw_process_set_name(process, "processname") );
+  ck_assert( cpw_process_add_arg(process, "arg") );
+  ck_assert( cpw_process_add_arg(process, "-o option") );
+
+  cpw_process_free(&process);
+  ck_assert( process == NULL );
 }
 END_TEST
 
@@ -51,6 +71,7 @@ Suite * process_suite(void)
 
     tcase_add_test(tc_core, test_cpw_process_create);
     tcase_add_test(tc_core, test_cpw_process_add_arg);
+    tcase_add_test(tc_core, test_cpw_process_free);
     tcase_add_test(tc_core, test_cpw_process_set_value);
     suite_add_tcase(s, tc_core);
     return s;
