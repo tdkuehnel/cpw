@@ -15,8 +15,9 @@ START_TEST (test_config_cpw_config_init)
   context = cpw_context_new();
   cpw_context_init(context);
 
-  ck_assert( cpw_config_init(context->config, "valid_config.conf") );
+  ck_assert( cpw_config_init(context->config, "valid_syntax_config.conf") );
 
+  cpw_context_free(&context);
 }
 END_TEST
 
@@ -83,9 +84,9 @@ START_TEST (test_config_cpw_parsecontext_init)
   cpwparsecontext *parsecontext;
 
   parsecontext = cpw_parsecontext_new();
-  cpw_parsecontext_init(parsecontext, "valid_config.conf");
+  ck_assert( cpw_parsecontext_init(parsecontext, "valid_logic_config.conf") );
   ck_assert( parsecontext->linetoken->is_tag == 0 );
-  ck_assert_str_eq( parsecontext->configfile_path, "valid_config.conf");
+  ck_assert_str_eq( parsecontext->configfile_path, "valid_logic_config.conf");
   ck_assert( parsecontext->configerror == NULL );
 }
 END_TEST
@@ -165,17 +166,53 @@ START_TEST (test_config_cpw_config_validate_configfile_syntax)
 {
   /* unit test code */
   cpwparsecontext *parsecontext;
+  cpwcontext *context;
+
+  context = cpw_context_new();
+  cpw_context_init(context);
+
+  ck_assert( cpw_config_init(context->config, "valid_syntax_config.conf") );
 
   parsecontext = cpw_parsecontext_new();
-  cpw_parsecontext_init(parsecontext, "valid_config.conf");
+  cpw_parsecontext_init(parsecontext, "valid_syntax_config.conf");
 
-  ck_assert( cpw_config_validate_configfile_syntax(parsecontext) );
-  
+  ck_assert( cpw_config_validate_configfile_syntax(context->config, parsecontext) );
+  ck_assert( context->config->command == NULL);
+  ck_assert( context->config->process == NULL);
+
   cpw_parsecontext_done(&parsecontext);
   parsecontext = cpw_parsecontext_new();
-  cpw_parsecontext_init(parsecontext, "invalid_config.conf");
+  cpw_parsecontext_init(parsecontext, "invalid_syntax_config.conf");
 
-  ck_assert( ! cpw_config_validate_configfile_syntax(parsecontext) );
+  ck_assert( ! cpw_config_validate_configfile_syntax(context->config, parsecontext) );
+
+}
+END_TEST
+
+START_TEST (test_config_cpw_config_validate_configfile_logic)
+{
+  /* unit test code */
+  cpwparsecontext *parsecontext;
+  cpwcontext *context;
+
+  context = cpw_context_new();
+  cpw_context_init(context);
+
+  ck_assert( cpw_config_init(context->config, "valid_logic_config.conf") );
+
+  parsecontext = cpw_parsecontext_new();
+  ck_assert( cpw_parsecontext_init(parsecontext, "valid_logic_config.conf") );
+
+  ck_assert( cpw_config_validate_configfile_logic(context->config, parsecontext) );
+  ck_assert( context->config->command != NULL);
+  ck_assert( context->config->process != NULL);
+
+  cpw_parsecontext_done(&parsecontext);
+
+  parsecontext = cpw_parsecontext_new();
+  cpw_parsecontext_init(parsecontext, "invalid_logic_config.conf");
+
+  ck_assert( ! cpw_config_validate_configfile_logic(context->config, parsecontext) );
 
 }
 END_TEST
@@ -193,6 +230,7 @@ Suite * config_suite(void)
     tcase_add_test(tc_core, test_config_cpw_config_init);
     tcase_add_test(tc_core, test_config_cpw_tag_is_arg_allowed);
     tcase_add_test(tc_core, test_config_cpw_config_validate_configfile_syntax);
+    tcase_add_test(tc_core, test_config_cpw_config_validate_configfile_logic);
 
     tcase_add_test(tc_core, test_config_cpw_parsecontext_new);
     tcase_add_test(tc_core, test_config_cpw_parsecontext_init);

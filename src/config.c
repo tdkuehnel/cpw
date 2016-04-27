@@ -62,18 +62,18 @@ cpwparsecontext *cpw_parsecontext_new() {
 
   parsecontext = calloc(1, sizeof(cpwparsecontext));
   if ( parsecontext ) {
+    return parsecontext;
   } else {
     CPW_LOG_ERROR("no mem for cpwprsecontext\n");
     return NULL;
   }
-  return parsecontext;
 }
 
 int cpw_parsecontext_init(cpwparsecontext *parsecontext, const char* configfile_path) {
   int i;
 
   if ( parsecontext ) {
-    parsecontext->configfile_path = malloc(strlen(configfile_path +1));
+    parsecontext->configfile_path = malloc(strlen(configfile_path) + 1);
     if ( parsecontext->configfile_path ) {
       strcpy(parsecontext->configfile_path, configfile_path);
       parsecontext->stream = fopen(configfile_path, "r");
@@ -270,7 +270,7 @@ void cpw_parsecontext_done(cpwparsecontext **pparsecontext) {
 #undef DEBUG 
 #define DEBUG 0
 
-int cpw_config_validate_configfile_logic(cpwparsecontext *parsecontext) {
+int cpw_config_validate_configfile_logic(cpwconfig *config, cpwparsecontext *parsecontext) {
   cpwcommand *commandlist = NULL;
   cpwprocess *processlist = NULL;
   cpwcommand *command = NULL;
@@ -327,14 +327,22 @@ int cpw_config_validate_configfile_logic(cpwparsecontext *parsecontext) {
   }
   if ( parsecontext->configerror )
     return 0;
-  else
+  else {
+    if ( config ) {
+      config->command = commandlist;
+      config->process = processlist;      
+    } else {
+      CPW_LOG_ERROR("invalid config argument\n");
+      return 0;
+    }
     return 1;
+  }
 }
 
 #undef DEBUG 
 #define DEBUG 0
 
-int cpw_config_validate_configfile_syntax(cpwparsecontext *parsecontext) {
+int cpw_config_validate_configfile_syntax(cpwconfig *config, cpwparsecontext *parsecontext) {
   
   CPW_LOG_INFO("Validating config file syntax %s ...\n", parsecontext->configfile_path);
   rewind(parsecontext->stream);
@@ -391,7 +399,58 @@ int cpw_config_validate_configfile_syntax(cpwparsecontext *parsecontext) {
 }  
 
 void cpw_config_printout(cpwconfig *config) {
+  cpwcommand *command;
+  cpwprocess *process;
+  cpwcommandarg *commandarg;
+
+  int count;
+
   CPW_LOG_INFO("current configuration: \n");
+  if ( config ) {
+    if ( config->command ) {
+      LL_COUNT(config->command, command, count);      
+      CPW_LOG_INFO("%d Command definitions: (%d)\n", count, count);
+      count = 1;
+      LL_FOREACH(config->command, command) {
+	CPW_LOG_INFO("Command(%d):       name: '%s'\n", count, command->name);
+	CPW_LOG_INFO("       (%d):       path: '%s'\n", count, command->path);
+	CPW_LOG_INFO("       (%d):       args: '", count);
+	LL_FOREACH(command->args, commandarg) {
+	  CPW_LOG_INFO("%s", commandarg->arg);
+	  if ( commandarg->next )
+	    CPW_LOG_INFO(" ");
+	}
+	CPW_LOG_INFO("'\n\n");
+	count++;
+      }
+    } else {
+      CPW_LOG_INFO("No Command definitions (0)\n");
+    }
+    
+    if ( config->process ) {
+      LL_COUNT(config->process, process, count);      
+      CPW_LOG_INFO("%d Process definitions: (%d)\n", count, count);
+      count = 1;
+      LL_FOREACH(config->process, process) {
+	CPW_LOG_INFO("Process(%d):       name: '%s'\n", count, process->name);
+	if ( process->command )
+	  CPW_LOG_INFO("       (%d):    Command: '%s'\n", count, process->command->name);
+	CPW_LOG_INFO("       (%d):       args: '", count);
+	LL_FOREACH(process->args, commandarg) {
+	  CPW_LOG_INFO("%s", commandarg->arg);
+	  if ( commandarg->next )
+	    CPW_LOG_INFO(" ");
+	}
+	CPW_LOG_INFO("'\n\n");
+	count++;
+      }
+    } else {
+      CPW_LOG_INFO("No Process definitions (0)\n");
+    }
+
+  } else {
+    CPW_LOG_ERROR("Invalid config argument\n");
+  }
 }
 
 cpwcommand *cpw_config_parse_config_for_command(cpwconfig *config) {
@@ -411,9 +470,9 @@ int cpw_config_parse(cpwconfig *config) {
 }
 
 int cpw_config_validate(cpwconfig *config) {
-  if ( cpw_config_validate_configfile_syntax(config->parsecontext) ) {
+  if ( cpw_config_validate_configfile_syntax(config, config->parsecontext) ) {
     CPW_LOG_INFO("configfile syntax looks OK\n");
-    if ( cpw_config_validate_configfile_logic(config->parsecontext) ) {
+    if ( cpw_config_validate_configfile_logic(config, config->parsecontext) ) {
       CPW_LOG_INFO("configfile logic looks OK\n");
     } else {
       CPW_LOG_ERROR("Invalid config file logic: %s\n", config->parsecontext->configfile_path);
